@@ -17,7 +17,7 @@ onMounted(async () => {
 
 <template>
   <div style="text-align: center; margin-top: 50px;">
-    <h1>我的全栈网站</h1>
+    <h1>我的全栈网站-v3全新版本</h1>
     <p>后端返回的消息：<strong>{{ msg }}</strong></p>
   </div>
 </template>
