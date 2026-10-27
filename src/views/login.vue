@@ -10,6 +10,7 @@ const loading = ref(false)
 const errorMsg = ref('')
 const isFocused = ref('') // 控制输入框的聚焦光效
 
+// 切换登录/注册
 const toggleMode = () => {
   mode.value = mode.value === 0 ? 1 : 0
   form.username = ''
@@ -18,16 +19,24 @@ const toggleMode = () => {
   errorMsg.value = ''
 }
 
+// 提交表单
 const handleSubmit = async () => {
   errorMsg.value = ''
+  
+  // 表单验证
   if (form.username.length < 3) return errorMsg.value = '用户名至少需要3个字符'
   if (form.password.length < 6) return errorMsg.value = '密码不能少于6位'
   if (mode.value === 1 && form.password !== form.confirmPassword) return errorMsg.value = '两次输入的密码不一致'
 
   loading.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 800)) // 模拟请求
+    // 模拟网络请求延迟
+    await new Promise(resolve => setTimeout(resolve, 800)) 
+    
+    // 模拟登录成功，写入 Token
     localStorage.setItem('userToken', 'fake-jwt-token-12345')
+    
+    // 跳转到待办清单页面
     router.push('/todo')
   } catch (err) {
     errorMsg.value = '网络错误，请稍后再试'
@@ -237,6 +246,7 @@ h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; lette
   font-size: 15px;
   outline: none;
   border-radius: 12px;
+  box-sizing: border-box;
 }
 
 .input-wrapper input::placeholder { color: #52525b; }
