@@ -93,7 +93,7 @@ const handleSubmit = async () => {
       <div class="header">
         <div class="logo-icon">✦</div>
         <h2>{{ mode === 0 ? '欢迎回来' : '创建账号' }}</h2>
-        <p class="subtitle">{{ mode === 0 ? '输入您的凭据以继续' : s'注册以开启您的专属空间' }}</p>
+        <p class="subtitle">{{ mode === 0 ? '输入您的凭据以继续' : '注册以开启您的专属空间' }}</p>
       </div>
 
       <form @submit.prevent="handleSubmit">
