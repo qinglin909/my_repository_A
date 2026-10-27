@@ -14,8 +14,8 @@ import { loadSlim } from "@tsparticles/slim"
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: '/login' },
-    { path: '/login', component: Login }, // 这里也必须是大写
+    { path: '/', redirect: '/Login' },
+    { path: '/Login', component: Login }, // 这里也必须是大写
     { path: '/todo', component: Todo }
   ]
 })
