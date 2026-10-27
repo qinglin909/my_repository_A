@@ -8,9 +8,47 @@ const form = reactive({ username: '', password: '', confirmPassword: '' })
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
-const isFocused = ref('') // 控制输入框的聚焦光效
+const isFocused = ref('')
 
-// 切换登录/注册
+// 粒子特效配置
+const particlesOptions = {
+  background: { color: { value: "transparent" } },
+  fpsLimit: 60,
+  interactivity: {
+    events: {
+      onHover: { enable: true, mode: "grab" },
+      onClick: { enable: true, mode: "push" },
+    },
+    modes: {
+      grab: { distance: 140, links: { opacity: 0.5 } },
+      push: { quantity: 3 },
+    },
+  },
+  particles: {
+    color: { value: "#ffffff" },
+    links: {
+      color: "#ffffff",
+      distance: 150,
+      enable: true,
+      opacity: 0.15, // 线条透明度调低，不抢极光的戏
+      width: 1,
+    },
+    move: {
+      enable: true,
+      speed: 1.5, // 速度调慢，更优雅
+      direction: "none",
+      random: false,
+      straight: false,
+      outModes: { default: "bounce" },
+    },
+    number: { density: { enable: true, area: 800 }, value: 40 },
+    opacity: { value: 0.4 },
+    shape: { type: "circle" },
+    size: { value: { min: 1, max: 3 } },
+  },
+  detectRetina: true,
+}
+
 const toggleMode = () => {
   mode.value = mode.value === 0 ? 1 : 0
   form.username = ''
@@ -19,24 +57,16 @@ const toggleMode = () => {
   errorMsg.value = ''
 }
 
-// 提交表单
 const handleSubmit = async () => {
   errorMsg.value = ''
-  
-  // 表单验证
   if (form.username.length < 3) return errorMsg.value = '用户名至少需要3个字符'
   if (form.password.length < 6) return errorMsg.value = '密码不能少于6位'
   if (mode.value === 1 && form.password !== form.confirmPassword) return errorMsg.value = '两次输入的密码不一致'
 
   loading.value = true
   try {
-    // 模拟网络请求延迟
     await new Promise(resolve => setTimeout(resolve, 800)) 
-    
-    // 模拟登录成功，写入 Token
     localStorage.setItem('userToken', 'fake-jwt-token-12345')
-    
-    // 跳转到待办清单页面
     router.push('/todo')
   } catch (err) {
     errorMsg.value = '网络错误，请稍后再试'
@@ -48,12 +78,15 @@ const handleSubmit = async () => {
 
 <template>
   <div class="premium-container">
-    <!-- 高级动态极光背景 -->
+    <!-- 动态极光背景 -->
     <div class="aurora-bg">
       <div class="glow glow-1"></div>
       <div class="glow glow-2"></div>
       <div class="glow glow-3"></div>
     </div>
+
+    <!-- 粒子特效 (层级在极光之上) -->
+    <vue-particles id="tsparticles" :options="particlesOptions" class="particles-layer" />
 
     <!-- 毛玻璃登录框 -->
     <div class="login-box">
@@ -106,12 +139,10 @@ const handleSubmit = async () => {
           </div>
         </div>
 
-        <!-- 错误提示带平滑展开动画 -->
         <div class="error-container" :class="{ show: errorMsg }">
           <div class="error-msg">{{ errorMsg }}</div>
         </div>
 
-        <!-- 渐变按钮 -->
         <button type="submit" :disabled="loading" class="submit-btn">
           <span v-if="loading" class="loader"></span>
           <span>{{ loading ? '请稍候...' : (mode === 0 ? '登 录' : '注 册') }}</span>
@@ -126,7 +157,6 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
-/* 页面基础设置：深色 + 纯黑底色 */
 .premium-container {
   position: relative;
   display: flex;
@@ -138,67 +168,47 @@ const handleSubmit = async () => {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* =========================================
-   1. 高级极光背景 (Aurora Glow)
-   ========================================= */
+/* 极光背景层 */
 .aurora-bg {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 0; left: 0; width: 100%; height: 100%;
   overflow: hidden;
   z-index: 1;
+}
+
+/* 粒子特效层 */
+.particles-layer {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 2; /* 在极光之上 */
 }
 
 .glow {
   position: absolute;
   border-radius: 50%;
-  filter: blur(100px); /* 产生极强的柔和光晕 */
+  filter: blur(100px);
   opacity: 0.6;
   animation: float 12s infinite ease-in-out alternate;
 }
 
-.glow-1 {
-  width: 500px; height: 500px;
-  background: #4f46e5; /* 靛蓝色 */
-  top: -10%; left: -10%;
-}
+.glow-1 { width: 500px; height: 500px; background: #4f46e5; top: -10%; left: -10%; }
+.glow-2 { width: 400px; height: 400px; background: #db2777; bottom: -10%; right: -10%; animation-duration: 15s; animation-delay: -5s; }
+.glow-3 { width: 300px; height: 300px; background: #06b6d4; top: 40%; left: 40%; animation-duration: 10s; animation-delay: -2s; }
 
-.glow-2 {
-  width: 400px; height: 400px;
-  background: #db2777; /* 品红色 */
-  bottom: -10%; right: -10%;
-  animation-duration: 15s;
-  animation-delay: -5s;
-}
-
-.glow-3 {
-  width: 300px; height: 300px;
-  background: #06b6d4; /* 青色 */
-  top: 40%; left: 40%;
-  animation-duration: 10s;
-  animation-delay: -2s;
-}
-
-/* 极光漂浮动画 */
 @keyframes float {
   0% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(50px, 30px) scale(1.1); }
   100% { transform: translate(-30px, 60px) scale(0.9); }
 }
 
-/* =========================================
-   2. 登录框 (完美毛玻璃)
-   ========================================= */
+/* 毛玻璃登录框 */
 .login-box {
   position: relative;
-  z-index: 2;
+  z-index: 10; /* 必须比粒子和极光高，保证在最上层 */
   width: 100%;
   max-width: 420px;
   padding: 48px 40px;
   border-radius: 24px;
-  /* 黑色磨砂玻璃效果 */
   background: rgba(20, 20, 25, 0.65); 
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -207,22 +217,13 @@ const handleSubmit = async () => {
 }
 
 .header { text-align: center; margin-bottom: 36px; }
-.logo-icon { 
-  font-size: 32px; color: #fff; margin-bottom: 12px; 
-  text-shadow: 0 0 20px rgba(255,255,255,0.5);
-}
+.logo-icon { font-size: 32px; color: #fff; margin-bottom: 12px; text-shadow: 0 0 20px rgba(255,255,255,0.5); }
 h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }
 .subtitle { color: #a1a1aa; font-size: 14px; margin: 0; }
 
-/* =========================================
-   3. 输入框精修
-   ========================================= */
 .input-group { margin-bottom: 20px; }
-.input-group label { 
-  display: block; margin-bottom: 8px; color: #d4d4d8; font-size: 13px; font-weight: 500; 
-}
+.input-group label { display: block; margin-bottom: 8px; color: #d4d4d8; font-size: 13px; font-weight: 500; }
 
-/* 外层容器做边框动画 */
 .input-wrapper {
   position: relative;
   border-radius: 12px;
@@ -232,9 +233,9 @@ h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; lette
 }
 
 .input-wrapper.active {
-  border-color: #6366f1; /* 靛蓝色边框 */
+  border-color: #6366f1;
   background: rgba(99, 102, 241, 0.05);
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); /* 高级发光环 */
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
 }
 
 .input-wrapper input {
@@ -253,57 +254,27 @@ h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; lette
 
 .eye-icon {
   position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: pointer;
-  font-size: 13px;
-  color: #a1a1aa;
-  user-select: none;
-  transition: color 0.2s;
+  right: 16px; top: 50%; transform: translateY(-50%);
+  cursor: pointer; font-size: 13px; color: #a1a1aa; user-select: none; transition: color 0.2s;
 }
 .eye-icon:hover { color: #ffffff; }
 
-/* =========================================
-   4. 错误提示动画
-   ========================================= */
 .error-container {
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s ease-in-out, margin-bottom 0.3s;
   margin-bottom: 0;
 }
-.error-container.show {
-  max-height: 40px;
-  margin-bottom: 15px;
-}
+.error-container.show { max-height: 40px; margin-bottom: 15px; }
 .error-msg {
-  color: #ef4444;
-  font-size: 13px;
-  padding: 8px 12px;
-  background: rgba(239, 68, 68, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444; font-size: 13px; padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-/* =========================================
-   5. 高级渐变按钮
-   ========================================= */
 .submit-btn {
-  position: relative;
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
+  position: relative; width: 100%; padding: 14px; border-radius: 12px; border: none;
+  color: white; font-size: 16px; font-weight: 600; cursor: pointer; overflow: hidden;
+  display: flex; justify-content: center; align-items: center; gap: 8px;
   background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
   background-size: 200% 200%;
   transition: 0.3s, transform 0.1s;
@@ -317,46 +288,17 @@ h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; lette
   100% { background-position: 0% 50%; }
 }
 
-.submit-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(168, 85, 247, 0.5);
-}
+.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(168, 85, 247, 0.5); }
+.submit-btn:active:not(:disabled) { transform: translateY(0); }
+.submit-btn:disabled { opacity: 0.7; cursor: not-allowed; animation: none; }
 
-.submit-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.submit-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  animation: none;
-}
-
-/* 加载圈的 CSS */
 .loader {
-  width: 16px; height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+  width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* =========================================
-   6. 底部切换文本
-   ========================================= */
-.switch-mode {
-  text-align: center;
-  margin-top: 24px;
-}
-.switch-mode span {
-  color: #a1a1aa;
-  cursor: pointer;
-  font-size: 14px;
-  transition: color 0.2s;
-}
-.switch-mode span:hover {
-  color: #ffffff;
-  text-decoration: underline;
-}
+.switch-mode { text-align: center; margin-top: 24px; }
+.switch-mode span { color: #a1a1aa; cursor: pointer; font-size: 14px; transition: color 0.2s; }
+.switch-mode span:hover { color: #ffffff; text-decoration: underline; }
 </style>
