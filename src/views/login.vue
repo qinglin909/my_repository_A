@@ -10,7 +10,7 @@ const loading = ref(false)
 const errorMsg = ref('')
 const isFocused = ref('')
 
-// 粒子特效配置
+// 粒子特效配置 - 调整为深色粒子适配浅色背景
 const particlesOptions = {
   background: { color: { value: "transparent" } },
   fpsLimit: 60,
@@ -25,24 +25,24 @@ const particlesOptions = {
     },
   },
   particles: {
-    color: { value: "#ffffff" },
+    color: { value: "#6366f1" }, // 粒子颜色改为品牌色
     links: {
-      color: "#ffffff",
+      color: "#6366f1", // 连线颜色改为品牌色
       distance: 150,
       enable: true,
-      opacity: 0.15, // 线条透明度调低，不抢极光的戏
+      opacity: 0.1,
       width: 1,
     },
     move: {
       enable: true,
-      speed: 1.5, // 速度调慢，更优雅
+      speed: 1.5,
       direction: "none",
       random: false,
       straight: false,
       outModes: { default: "bounce" },
     },
     number: { density: { enable: true, area: 800 }, value: 40 },
-    opacity: { value: 0.4 },
+    opacity: { value: 0.3 },
     shape: { type: "circle" },
     size: { value: { min: 1, max: 3 } },
   },
@@ -85,7 +85,7 @@ const handleSubmit = async () => {
       <div class="glow glow-3"></div>
     </div>
 
-    <!-- 粒子特效 (层级在极光之上) -->
+    <!-- 粒子特效 -->
     <vue-particles id="tsparticles" :options="particlesOptions" class="particles-layer" />
 
     <!-- 毛玻璃登录框 -->
@@ -163,7 +163,8 @@ const handleSubmit = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #000000;
+  /* 背景改为清爽的浅蓝白渐变 */
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -180,20 +181,21 @@ const handleSubmit = async () => {
 .particles-layer {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  z-index: 2; /* 在极光之上 */
+  z-index: 2;
 }
 
 .glow {
   position: absolute;
   border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.6;
+  filter: blur(120px); /* 稍微增加模糊度，让光晕更柔和 */
+  opacity: 0.5; /* 降低一点透明度，避免在浅色背景上太突兀 */
   animation: float 12s infinite ease-in-out alternate;
 }
 
-.glow-1 { width: 500px; height: 500px; background: #4f46e5; top: -10%; left: -10%; }
-.glow-2 { width: 400px; height: 400px; background: #db2777; bottom: -10%; right: -10%; animation-duration: 15s; animation-delay: -5s; }
-.glow-3 { width: 300px; height: 300px; background: #06b6d4; top: 40%; left: 40%; animation-duration: 10s; animation-delay: -2s; }
+/* 极光颜色调整为更清新的色调 */
+.glow-1 { width: 500px; height: 500px; background: #a5b4fc; top: -10%; left: -10%; }
+.glow-2 { width: 400px; height: 400px; background: #fbcfe8; bottom: -10%; right: -10%; animation-duration: 15s; animation-delay: -5s; }
+.glow-3 { width: 300px; height: 300px; background: #bae6fd; top: 40%; left: 40%; animation-duration: 10s; animation-delay: -2s; }
 
 @keyframes float {
   0% { transform: translate(0, 0) scale(1); }
@@ -201,41 +203,67 @@ const handleSubmit = async () => {
   100% { transform: translate(-30px, 60px) scale(0.9); }
 }
 
-/* 毛玻璃登录框 */
+/* 毛玻璃登录框 - 改为浅色毛玻璃 */
 .login-box {
   position: relative;
-  z-index: 10; /* 必须比粒子和极光高，保证在最上层 */
+  z-index: 10;
   width: 100%;
   max-width: 420px;
   padding: 48px 40px;
   border-radius: 24px;
-  background: rgba(20, 20, 25, 0.65); 
+  /* 背景改为半透明白色 */
+  background: rgba(255, 255, 255, 0.75); 
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  /* 边框改为浅色 */
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  /* 阴影改为柔和的深色阴影，增加层次感 */
+  box-shadow: 0 30px 60px -12px rgba(99, 102, 241, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .header { text-align: center; margin-bottom: 36px; }
-.logo-icon { font-size: 32px; color: #fff; margin-bottom: 12px; text-shadow: 0 0 20px rgba(255,255,255,0.5); }
-h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }
-.subtitle { color: #a1a1aa; font-size: 14px; margin: 0; }
+.logo-icon { 
+  font-size: 32px; 
+  color: #6366f1; /* Logo图标改为品牌色 */
+  margin-bottom: 12px; 
+  text-shadow: 0 0 20px rgba(99, 102, 241, 0.3); 
+}
+h2 { 
+  margin: 0 0 8px 0; 
+  color: #1e293b; /* 标题改为深灰黑色 */
+  font-size: 28px; 
+  font-weight: 600; 
+  letter-spacing: -0.5px; 
+}
+.subtitle { 
+  color: #64748b; /* 副标题改为中灰色 */
+  font-size: 14px; 
+  margin: 0; 
+}
 
 .input-group { margin-bottom: 20px; }
-.input-group label { display: block; margin-bottom: 8px; color: #d4d4d8; font-size: 13px; font-weight: 500; }
+.input-group label { 
+  display: block; 
+  margin-bottom: 8px; 
+  color: #475569; /* 标签改为深灰色 */
+  font-size: 13px; 
+  font-weight: 500; 
+}
 
 .input-wrapper {
   position: relative;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.3);
+  /* 边框改为浅灰色 */
+  border: 1px solid #e2e8f0;
+  /* 背景改为极浅的灰白色 */
+  background: #f8fafc;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .input-wrapper.active {
   border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.05);
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
 }
 
 .input-wrapper input {
@@ -243,21 +271,28 @@ h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; lette
   padding: 14px 16px;
   background: transparent;
   border: none;
-  color: #ffffff;
+  /* 输入文字改为深黑色 */
+  color: #0f172a;
   font-size: 15px;
   outline: none;
   border-radius: 12px;
   box-sizing: border-box;
 }
 
-.input-wrapper input::placeholder { color: #52525b; }
+.input-wrapper input::placeholder { 
+  color: #94a3b8; /* 占位符改为浅灰色 */
+}
 
 .eye-icon {
   position: absolute;
   right: 16px; top: 50%; transform: translateY(-50%);
-  cursor: pointer; font-size: 13px; color: #a1a1aa; user-select: none; transition: color 0.2s;
+  cursor: pointer; 
+  font-size: 13px; 
+  color: #94a3b8; /* 眼睛图标改为中灰色 */
+  user-select: none; 
+  transition: color 0.2s;
 }
-.eye-icon:hover { color: #ffffff; }
+.eye-icon:hover { color: #6366f1; }
 
 .error-container {
   max-height: 0;
@@ -267,14 +302,29 @@ h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; lette
 }
 .error-container.show { max-height: 40px; margin-bottom: 15px; }
 .error-msg {
-  color: #ef4444; font-size: 13px; padding: 8px 12px;
-  background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444; 
+  font-size: 13px; 
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.08); 
+  border-radius: 8px; 
+  border: 1px solid rgba(239, 68, 68, 0.15);
 }
 
 .submit-btn {
-  position: relative; width: 100%; padding: 14px; border-radius: 12px; border: none;
-  color: white; font-size: 16px; font-weight: 600; cursor: pointer; overflow: hidden;
-  display: flex; justify-content: center; align-items: center; gap: 8px;
+  position: relative; 
+  width: 100%; 
+  padding: 14px; 
+  border-radius: 12px; 
+  border: none;
+  color: white; 
+  font-size: 16px; 
+  font-weight: 600; 
+  cursor: pointer; 
+  overflow: hidden;
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  gap: 8px;
   background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
   background-size: 200% 200%;
   transition: 0.3s, transform 0.1s;
@@ -288,7 +338,7 @@ h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; lette
   100% { background-position: 0% 50%; }
 }
 
-.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(168, 85, 247, 0.5); }
+.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(168, 85, 247, 0.4); }
 .submit-btn:active:not(:disabled) { transform: translateY(0); }
 .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; animation: none; }
 
@@ -299,6 +349,14 @@ h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; lette
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .switch-mode { text-align: center; margin-top: 24px; }
-.switch-mode span { color: #a1a1aa; cursor: pointer; font-size: 14px; transition: color 0.2s; }
-.switch-mode span:hover { color: #ffffff; text-decoration: underline; }
+.switch-mode span { 
+  color: #64748b; /* 切换文字改为中灰色 */
+  cursor: pointer; 
+  font-size: 14px; 
+  transition: color 0.2s; 
+}
+.switch-mode span:hover { 
+  color: #6366f1; /* hover时变为品牌色 */
+  text-decoration: underline; 
+}
 </style>
