@@ -1,69 +1,24 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-// 滑块拖拽状态
-const sliderLeft = ref(0) // 滑块当前距离左侧的像素
-const isDragging = ref(false) // 是否正在拖拽
-const maxSlide = 270 // 最大可拖拽距离 (如果是360宽的表单，大概是这个数值)
 
-// 开始拖拽
-const startDrag = (e) => {
-  if (isSliderVerified.value) return
-  isDragging.value = true
-  // 记录鼠标按下的初始 X 坐标
-  const startX = e.clientX || e.touches[0].clientX
-  
-  const onMouseMove = (moveEvent) => {
-    if (!isDragging.value) return
-    const currentX = moveEvent.clientX || moveEvent.touches[0].clientX
-    let moveDistance = currentX - startX
-    
-    // 限制不能拖出左边界，也不能拖出右边界
-    if (moveDistance < 0) moveDistance = 0
-    if (moveDistance > maxSlide) moveDistance = maxSlide
-    
-    sliderLeft.value = moveDistance
-    
-    // 如果拖到了最右边，自动判定验证通过
-    if (moveDistance >= maxSlide - 2) {
-      isSliderVerified.value = true
-      isDragging.value = false
-      cleanupEvents()
-    }
-  }
-  
-  const onMouseUp = () => {
-    isDragging.value = false
-    // 如果没有拖到底，松手后自动弹回左边
-    if (sliderLeft.value < maxSlide) {
-      sliderLeft.value = 0
-    }
-    cleanupEvents()
-  }
-  
-  // 绑定全局事件，防止鼠标滑出滑块区域失效
-  const cleanupEvents = () => {
-    window.removeEventListener('mousemove', onMouseMove)
-    window.removeEventListener('mouseup', onMouseUp)
-    window.removeEventListener('touchmove', onMouseMove)
-    window.removeEventListener('touchend', onMouseUp)
-  }
-  
-  window.addEventListener('mousemove', onMouseMove)
-  window.addEventListener('mouseup', onMouseUp)
-  window.addEventListener('touchmove', onMouseMove) // 兼容手机端
-  window.addEventListener('touchend', onMouseUp)
-}
 const router = useRouter()
+
+// ================= 页面状态 =================
 const mode = ref(0) // 0 = 登录，1 = 注册
 const form = reactive({ username: '', password: '', confirmPassword: '' })
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
 const isFocused = ref('')
-const isSliderVerified = ref(false) // 滑块验证码状态
 
-// 粒子特效配置
+// ================= 滑块验证码状态 =================
+const sliderLeft = ref(0)
+const isDragging = ref(false)
+const maxSlide = 270
+const isSliderVerified = ref(false)
+
+// ================= 粒子特效配置 =================
 const particlesOptions = {
   background: { color: { value: "transparent" } },
   fpsLimit: 60,
@@ -102,20 +57,71 @@ const particlesOptions = {
   detectRetina: true,
 }
 
+// ================= 滑块交互逻辑 =================
+const startDrag = (e) => {
+  if (isSliderVerified.value) return
+  isDragging.value = true
+  const startX = e.clientX || e.touches[0].clientX
+  
+  const onMouseMove = (moveEvent) => {
+    if (!isDragging.value) return
+    const currentX = moveEvent.clientX || moveEvent.touches[0].clientX
+    let moveDistance = currentX - startX
+    
+    if (moveDistance < 0) moveDistance = 0
+    if (moveDistance > maxSlide) moveDistance = maxSlide
+    
+    sliderLeft.value = moveDistance
+    
+    if (moveDistance >= maxSlide - 2) {
+      isSliderVerified.value = true
+      isDragging.value = false
+      cleanupEvents()
+    }
+  }
+  
+  const onMouseUp = () => {
+    isDragging.value = false
+    if (sliderLeft.value < maxSlide) {
+      sliderLeft.value = 0
+    }
+    cleanupEvents()
+  }
+  
+  const cleanupEvents = () => {
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+    window.removeEventListener('touchmove', onMouseMove)
+    window.removeEventListener('touchend', onMouseUp)
+  }
+  
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+  window.addEventListener('touchmove', onMouseMove)
+  window.addEventListener('touchend', onMouseUp)
+}
+
+// ================= 切换登录/注册模式 =================
 const toggleMode = () => {
   mode.value = mode.value === 0 ? 1 : 0
   form.username = ''
   form.password = ''
   form.confirmPassword = ''
   errorMsg.value = ''
-  isSliderVerified.value = false // 切换模式时重置验证码
+  isSliderVerified.value = false
 }
 
+// ================= 提交表单（写死版登录） =================
+// ================= 提交表单（支持本地存储注册） =================
 const handleSubmit = async () => {
   errorMsg.value = ''
+  
+  // 表单基础校验
   if (form.username.length < 3) return errorMsg.value = '用户名至少需要3个字符'
   if (form.password.length < 6) return errorMsg.value = '密码不能少于6位'
-  if (mode.value === 1 && form.password !== form.confirmPassword) return errorMsg.value = '两次输入的密码不一致'
+  if (mode.value === 1 && form.password !== form.confirmPassword) {
+    return errorMsg.value = '两次输入的密码不一致'
+  }
   
   // 验证码拦截
   if (!isSliderVerified.value) {
@@ -123,27 +129,45 @@ const handleSubmit = async () => {
   }
 
   loading.value = true
+  
   try {
-    // 真正去请求你的后端接口
+    // 1. 发送真实网络请求到你的 Vercel 后端
     const res = await fetch('/api/hello', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: form.username, password: form.password })
+      body: JSON.stringify({ 
+        username: form.username, 
+        password: form.password,
+        isRegister: mode.value === 1 // 把当前的模式传给后端（区分登录/注册）
+      })
     })
-    
-    const data = await res.json()
 
-    if (!res.ok) {
-      throw new Error(data.message || '登录失败')
+    // 2. 安全地解析后端的返回数据
+    const text = await res.text()
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch (e) {
+      throw new Error('服务器响应异常，请检查后端代码或环境变量')
     }
 
-    // 登录成功，存下用户信息
+    // 3. 如果后端报错（比如密码错误，或者已被注册）
+    if (!res.ok) {
+      throw new Error(data.message || '操作失败')
+    }
+
+    // 4. 验证通过，存入真实的 Token 和用户名（路由守卫靠这个放行）
     localStorage.setItem('userToken', 'fake-jwt-token-12345')
     localStorage.setItem('username', data.user.username)
     
-    router.push('/todo')
+    // 5. 跳转到首页
+    router.push('/home')
+
   } catch (err) {
+    // 将后端的错误信息展示给用户
     errorMsg.value = err.message
+    // 🚨 登录失败一定要清空可能残留的本地凭证，防止路由守卫误判
+    localStorage.removeItem('userToken') 
   } finally {
     loading.value = false
   }
