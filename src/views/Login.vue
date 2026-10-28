@@ -10,7 +10,7 @@ const loading = ref(false)
 const errorMsg = ref('')
 const isFocused = ref('')
 
-// 粒子特效配置 - 调整为蓝/青色粒子适配浅蓝背景
+// 粒子特效配置
 const particlesOptions = {
   background: { color: { value: "transparent" } },
   fpsLimit: 60,
@@ -25,12 +25,12 @@ const particlesOptions = {
     },
   },
   particles: {
-    color: { value: "#3b82f6" }, // 粒子颜色改为蓝色
+    color: { value: "#ffffff" },
     links: {
-      color: "#3b82f6", // 连线颜色改为蓝色
+      color: "#ffffff",
       distance: 150,
       enable: true,
-      opacity: 0.1,
+      opacity: 0.15,
       width: 1,
     },
     move: {
@@ -42,7 +42,7 @@ const particlesOptions = {
       outModes: { default: "bounce" },
     },
     number: { density: { enable: true, area: 800 }, value: 40 },
-    opacity: { value: 0.3 },
+    opacity: { value: 0.4 },
     shape: { type: "circle" },
     size: { value: { min: 1, max: 3 } },
   },
@@ -97,58 +97,58 @@ const handleSubmit = async () => {
       </div>
 
       <form @submit.prevent="handleSubmit">
-        <div class="input-group">
-          <label>用户名</label>
-          <div class="input-wrapper" :class="{ active: isFocused === 'user' }">
-            <input 
-              v-model="form.username" 
-              type="text" 
-              placeholder="请输入用户名"
-              @focus="isFocused = 'user'"
-              @blur="isFocused = ''"
-            />
-          </div>
+        <!-- 极简无标签：用户名 -->
+        <div class="input-wrapper" :class="{ active: isFocused === 'user' }">
+          <span class="input-icon">👤</span>
+          <input 
+            v-model="form.username" 
+            type="text" 
+            placeholder="请输入用户名"
+            @focus="isFocused = 'user'"
+            @blur="isFocused = ''"
+          />
         </div>
 
-        <div class="input-group">
-          <label>密码</label>
-          <div class="input-wrapper" :class="{ active: isFocused === 'pwd' }">
-            <input 
-              v-model="form.password" 
-              :type="showPassword ? 'text' : 'password'" 
-              placeholder="请输入密码"
-              @focus="isFocused = 'pwd'"
-              @blur="isFocused = ''"
-            />
-            <span class="eye-icon" @click="showPassword = !showPassword">
-              {{ showPassword ? '隐藏' : '显示' }}
-            </span>
-          </div>
+        <!-- 极简无标签：密码 -->
+        <div class="input-wrapper" :class="{ active: isFocused === 'pwd' }">
+          <span class="input-icon">🔒</span>
+          <input 
+            v-model="form.password" 
+            :type="showPassword ? 'text' : 'password'" 
+            placeholder="请输入密码"
+            @focus="isFocused = 'pwd'"
+            @blur="isFocused = ''"
+          />
+          <span class="eye-icon" @click="showPassword = !showPassword">
+            {{ showPassword ? '隐藏' : '显示' }}
+          </span>
         </div>
 
-        <div v-if="mode === 1" class="input-group">
-          <label>确认密码</label>
-          <div class="input-wrapper" :class="{ active: isFocused === 'confirm' }">
-            <input 
-              v-model="form.confirmPassword" 
-              type="password" 
-              placeholder="请再次输入密码"
-              @focus="isFocused = 'confirm'"
-              @blur="isFocused = ''"
-            />
-          </div>
+        <!-- 极简无标签：确认密码（仅注册时显示） -->
+        <div v-if="mode === 1" class="input-wrapper" :class="{ active: isFocused === 'confirm' }">
+          <span class="input-icon">🔐</span>
+          <input 
+            v-model="form.confirmPassword" 
+            type="password" 
+            placeholder="请再次输入密码"
+            @focus="isFocused = 'confirm'"
+            @blur="isFocused = ''"
+          />
         </div>
 
+        <!-- 错误提示 -->
         <div class="error-container" :class="{ show: errorMsg }">
           <div class="error-msg">{{ errorMsg }}</div>
         </div>
 
+        <!-- 登录/注册按钮 -->
         <button type="submit" :disabled="loading" class="submit-btn">
           <span v-if="loading" class="loader"></span>
           <span>{{ loading ? '请稍候...' : (mode === 0 ? '登 录' : '注 册') }}</span>
         </button>
       </form>
 
+      <!-- 底部切换 -->
       <div class="switch-mode">
         <span @click="toggleMode">{{ mode === 0 ? '没有账号？创建一个' : '已有账号？去登录' }}</span>
       </div>
@@ -163,8 +163,7 @@ const handleSubmit = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  /* 背景改为清爽的浅蓝渐变 */
-  background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+  background-color: #000000;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -187,15 +186,14 @@ const handleSubmit = async () => {
 .glow {
   position: absolute;
   border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.5;
+  filter: blur(100px);
+  opacity: 0.6;
   animation: float 12s infinite ease-in-out alternate;
 }
 
-/* 极光颜色调整为清爽的蓝/青色调 */
-.glow-1 { width: 500px; height: 500px; background: #bfdbfe; top: -10%; left: -10%; }
-.glow-2 { width: 400px; height: 400px; background: #ddd6fe; bottom: -10%; right: -10%; animation-duration: 15s; animation-delay: -5s; }
-.glow-3 { width: 300px; height: 300px; background: #ccfbf1; top: 40%; left: 40%; animation-duration: 10s; animation-delay: -2s; }
+.glow-1 { width: 500px; height: 500px; background: #4f46e5; top: -10%; left: -10%; }
+.glow-2 { width: 400px; height: 400px; background: #db2777; bottom: -10%; right: -10%; animation-duration: 15s; animation-delay: -5s; }
+.glow-3 { width: 300px; height: 300px; background: #06b6d4; top: 40%; left: 40%; animation-duration: 10s; animation-delay: -2s; }
 
 @keyframes float {
   0% { transform: translate(0, 0) scale(1); }
@@ -211,88 +209,73 @@ const handleSubmit = async () => {
   max-width: 420px;
   padding: 48px 40px;
   border-radius: 24px;
-  /* 背景改为半透明白色 */
-  background: rgba(255, 255, 255, 0.75); 
+  background: rgba(20, 20, 25, 0.65); 
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  /* 边框改为浅蓝灰色 */
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  /* 阴影改为柔和的蓝色阴影 */
-  box-shadow: 0 30px 60px -12px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .header { text-align: center; margin-bottom: 36px; }
-.logo-icon { 
-  font-size: 32px; 
-  color: #2563eb; /* Logo图标改为亮蓝色 */
-  margin-bottom: 12px; 
-  text-shadow: 0 0 20px rgba(37, 99, 235, 0.2); 
-}
-h2 { 
-  margin: 0 0 8px 0; 
-  color: #1e293b; 
-  font-size: 28px; 
-  font-weight: 600; 
-  letter-spacing: -0.5px; 
-}
-.subtitle { 
-  color: #64748b; 
-  font-size: 14px; 
-  margin: 0; 
-}
+.logo-icon { font-size: 32px; color: #fff; margin-bottom: 12px; text-shadow: 0 0 20px rgba(255,255,255,0.5); }
+h2 { margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }
+.subtitle { color: #a1a1aa; font-size: 14px; margin: 0; }
 
-.input-group { margin-bottom: 20px; }
-.input-group label { 
-  display: block; 
-  margin-bottom: 8px; 
-  color: #475569; 
-  font-size: 13px; 
-  font-weight: 500; 
-}
-
+/* =========================================
+   极简无标签输入框核心样式
+   ========================================= */
 .input-wrapper {
   position: relative;
+  margin-bottom: 24px; /* 输入框之间的间距 */
   border-radius: 12px;
-  /* 边框改为浅蓝灰色 */
-  border: 1px solid #bfdbfe;
-  /* 背景改为极浅的淡蓝色 */
-  background: #f0f9ff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .input-wrapper.active {
-  border-color: #3b82f6;
-  background: #ffffff;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.05);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+/* 左侧图标绝对定位 */
+.input-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #a1a1aa;
+  pointer-events: none; /* 让点击穿透到 input */
 }
 
 .input-wrapper input {
   width: 100%;
-  padding: 14px 16px;
+  padding: 14px 16px 14px 44px; /* 左侧留出 44px 给图标 */
   background: transparent;
   border: none;
-  color: #0f172a;
+  color: #ffffff;
   font-size: 15px;
   outline: none;
   border-radius: 12px;
   box-sizing: border-box;
 }
 
-.input-wrapper input::placeholder { 
-  color: #94a3b8; 
-}
+.input-wrapper input::placeholder { color: #52525b; }
 
+/* 密码框的显示/隐藏文字 */
 .eye-icon {
   position: absolute;
   right: 16px; top: 50%; transform: translateY(-50%);
-  cursor: pointer; 
-  font-size: 13px; 
-  color: #94a3b8; 
-  user-select: none; 
-  transition: color 0.2s;
+  cursor: pointer; font-size: 13px; color: #a1a1aa; user-select: none; transition: color 0.2s;
+  padding: 4px;
 }
-.eye-icon:hover { color: #2563eb; }
+.eye-icon:hover { color: #ffffff; }
 
+/* =========================================
+   错误提示与按钮
+   ========================================= */
 .error-container {
   max-height: 0;
   overflow: hidden;
@@ -301,34 +284,20 @@ h2 {
 }
 .error-container.show { max-height: 40px; margin-bottom: 15px; }
 .error-msg {
-  color: #ef4444; 
-  font-size: 13px; 
-  padding: 8px 12px;
-  background: rgba(239, 68, 68, 0.08); 
-  border-radius: 8px; 
-  border: 1px solid rgba(239, 68, 68, 0.15);
+  color: #ef4444; font-size: 13px; padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .submit-btn {
-  position: relative; 
-  width: 100%; 
-  padding: 14px; 
-  border-radius: 12px; 
-  border: none;
-  color: white; 
-  font-size: 16px; 
-  font-weight: 600; 
-  cursor: pointer; 
-  overflow: hidden;
-  display: flex; 
-  justify-content: center; 
-  align-items: center; 
-  gap: 8px;
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
+  position: relative; width: 100%; padding: 14px; border-radius: 12px; border: none;
+  color: white; font-size: 16px; font-weight: 600; cursor: pointer; overflow: hidden;
+  display: flex; justify-content: center; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
   background-size: 200% 200%;
   transition: 0.3s, transform 0.1s;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
   animation: gradientShift 3s ease infinite;
+  margin-top: 8px;
 }
 
 @keyframes gradientShift {
@@ -337,7 +306,7 @@ h2 {
   100% { background-position: 0% 50%; }
 }
 
-.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); }
+.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(168, 85, 247, 0.5); }
 .submit-btn:active:not(:disabled) { transform: translateY(0); }
 .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; animation: none; }
 
@@ -348,14 +317,6 @@ h2 {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .switch-mode { text-align: center; margin-top: 24px; }
-.switch-mode span { 
-  color: #64748b; 
-  cursor: pointer; 
-  font-size: 14px; 
-  transition: color 0.2s; 
-}
-.switch-mode span:hover { 
-  color: #2563eb; 
-  text-decoration: underline; 
-}
+.switch-mode span { color: #a1a1aa; cursor: pointer; font-size: 14px; transition: color 0.2s; }
+.switch-mode span:hover { color: #ffffff; text-decoration: underline; }
 </style>
