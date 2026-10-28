@@ -39,8 +39,15 @@ export default async function handler(request, response) {
       message: '登录成功', 
       user: { id: data.id, username: data.username } 
     });
-  } catch (err) {
-    // 如果代码直接崩溃，把崩溃原因返回
-    return response.status(500).json({ message: '代码崩溃: ' + err.message });
+	} catch (err) {
+    // 打印完整错误对象到 Vercel 控制台
+    console.error("详细错误信息:", err);
+    
+    // 如果是 fetch 错误，它会有一个 cause 属性
+    const causeMsg = err.cause ? err.cause.message : '无底层原因';
+    
+    return response.status(500).json({ 
+      message: `代码崩溃: ${err.message} | 底层原因: ${causeMsg}` 
+    });
   }
 }
