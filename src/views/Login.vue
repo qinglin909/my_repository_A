@@ -10,7 +10,7 @@ const loading = ref(false)
 const errorMsg = ref('')
 const isFocused = ref('')
 
-// 粒子特效配置 - 调整为深色粒子适配浅色背景
+// 粒子特效配置 - 调整为蓝/青色粒子适配浅蓝背景
 const particlesOptions = {
   background: { color: { value: "transparent" } },
   fpsLimit: 60,
@@ -25,9 +25,9 @@ const particlesOptions = {
     },
   },
   particles: {
-    color: { value: "#6366f1" }, // 粒子颜色改为品牌色
+    color: { value: "#3b82f6" }, // 粒子颜色改为蓝色
     links: {
-      color: "#6366f1", // 连线颜色改为品牌色
+      color: "#3b82f6", // 连线颜色改为蓝色
       distance: 150,
       enable: true,
       opacity: 0.1,
@@ -163,8 +163,8 @@ const handleSubmit = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  /* 背景改为清爽的浅蓝白渐变 */
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+  /* 背景改为清爽的浅蓝渐变 */
+  background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -187,15 +187,15 @@ const handleSubmit = async () => {
 .glow {
   position: absolute;
   border-radius: 50%;
-  filter: blur(120px); /* 稍微增加模糊度，让光晕更柔和 */
-  opacity: 0.5; /* 降低一点透明度，避免在浅色背景上太突兀 */
+  filter: blur(120px);
+  opacity: 0.5;
   animation: float 12s infinite ease-in-out alternate;
 }
 
-/* 极光颜色调整为更清新的色调 */
-.glow-1 { width: 500px; height: 500px; background: #a5b4fc; top: -10%; left: -10%; }
-.glow-2 { width: 400px; height: 400px; background: #fbcfe8; bottom: -10%; right: -10%; animation-duration: 15s; animation-delay: -5s; }
-.glow-3 { width: 300px; height: 300px; background: #bae6fd; top: 40%; left: 40%; animation-duration: 10s; animation-delay: -2s; }
+/* 极光颜色调整为清爽的蓝/青色调 */
+.glow-1 { width: 500px; height: 500px; background: #bfdbfe; top: -10%; left: -10%; }
+.glow-2 { width: 400px; height: 400px; background: #ddd6fe; bottom: -10%; right: -10%; animation-duration: 15s; animation-delay: -5s; }
+.glow-3 { width: 300px; height: 300px; background: #ccfbf1; top: 40%; left: 40%; animation-duration: 10s; animation-delay: -2s; }
 
 @keyframes float {
   0% { transform: translate(0, 0) scale(1); }
@@ -203,7 +203,7 @@ const handleSubmit = async () => {
   100% { transform: translate(-30px, 60px) scale(0.9); }
 }
 
-/* 毛玻璃登录框 - 改为浅色毛玻璃 */
+/* 毛玻璃登录框 */
 .login-box {
   position: relative;
   z-index: 10;
@@ -215,28 +215,28 @@ const handleSubmit = async () => {
   background: rgba(255, 255, 255, 0.75); 
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  /* 边框改为浅色 */
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  /* 阴影改为柔和的深色阴影，增加层次感 */
-  box-shadow: 0 30px 60px -12px rgba(99, 102, 241, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  /* 边框改为浅蓝灰色 */
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  /* 阴影改为柔和的蓝色阴影 */
+  box-shadow: 0 30px 60px -12px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .header { text-align: center; margin-bottom: 36px; }
 .logo-icon { 
   font-size: 32px; 
-  color: #6366f1; /* Logo图标改为品牌色 */
+  color: #2563eb; /* Logo图标改为亮蓝色 */
   margin-bottom: 12px; 
-  text-shadow: 0 0 20px rgba(99, 102, 241, 0.3); 
+  text-shadow: 0 0 20px rgba(37, 99, 235, 0.2); 
 }
 h2 { 
   margin: 0 0 8px 0; 
-  color: #1e293b; /* 标题改为深灰黑色 */
+  color: #1e293b; 
   font-size: 28px; 
   font-weight: 600; 
   letter-spacing: -0.5px; 
 }
 .subtitle { 
-  color: #64748b; /* 副标题改为中灰色 */
+  color: #64748b; 
   font-size: 14px; 
   margin: 0; 
 }
@@ -245,7 +245,7 @@ h2 {
 .input-group label { 
   display: block; 
   margin-bottom: 8px; 
-  color: #475569; /* 标签改为深灰色 */
+  color: #475569; 
   font-size: 13px; 
   font-weight: 500; 
 }
@@ -253,17 +253,17 @@ h2 {
 .input-wrapper {
   position: relative;
   border-radius: 12px;
-  /* 边框改为浅灰色 */
-  border: 1px solid #e2e8f0;
-  /* 背景改为极浅的灰白色 */
-  background: #f8fafc;
+  /* 边框改为浅蓝灰色 */
+  border: 1px solid #bfdbfe;
+  /* 背景改为极浅的淡蓝色 */
+  background: #f0f9ff;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .input-wrapper.active {
-  border-color: #6366f1;
+  border-color: #3b82f6;
   background: #ffffff;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
 }
 
 .input-wrapper input {
@@ -271,7 +271,6 @@ h2 {
   padding: 14px 16px;
   background: transparent;
   border: none;
-  /* 输入文字改为深黑色 */
   color: #0f172a;
   font-size: 15px;
   outline: none;
@@ -280,7 +279,7 @@ h2 {
 }
 
 .input-wrapper input::placeholder { 
-  color: #94a3b8; /* 占位符改为浅灰色 */
+  color: #94a3b8; 
 }
 
 .eye-icon {
@@ -288,11 +287,11 @@ h2 {
   right: 16px; top: 50%; transform: translateY(-50%);
   cursor: pointer; 
   font-size: 13px; 
-  color: #94a3b8; /* 眼睛图标改为中灰色 */
+  color: #94a3b8; 
   user-select: none; 
   transition: color 0.2s;
 }
-.eye-icon:hover { color: #6366f1; }
+.eye-icon:hover { color: #2563eb; }
 
 .error-container {
   max-height: 0;
@@ -325,10 +324,10 @@ h2 {
   justify-content: center; 
   align-items: center; 
   gap: 8px;
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
   background-size: 200% 200%;
   transition: 0.3s, transform 0.1s;
-  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
   animation: gradientShift 3s ease infinite;
 }
 
@@ -338,7 +337,7 @@ h2 {
   100% { background-position: 0% 50%; }
 }
 
-.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(168, 85, 247, 0.4); }
+.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); }
 .submit-btn:active:not(:disabled) { transform: translateY(0); }
 .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; animation: none; }
 
@@ -350,13 +349,13 @@ h2 {
 
 .switch-mode { text-align: center; margin-top: 24px; }
 .switch-mode span { 
-  color: #64748b; /* 切换文字改为中灰色 */
+  color: #64748b; 
   cursor: pointer; 
   font-size: 14px; 
   transition: color 0.2s; 
 }
 .switch-mode span:hover { 
-  color: #6366f1; /* hover时变为品牌色 */
+  color: #2563eb; 
   text-decoration: underline; 
 }
 </style>
