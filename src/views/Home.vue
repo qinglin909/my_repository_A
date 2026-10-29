@@ -1,3 +1,6 @@
+<script setup>
+	import Products from './Products.vue'
+</script>
 <template>
   <div class="home-page">
     <!-- 全屏华丽海报 -->
@@ -77,6 +80,3 @@
   .news-section { padding: 20px; grid-template-columns: 1fr; } /* 手机上变成单列 */
 }
 </style>
-<script>
-	import Products from './Products.vue'
-</script>

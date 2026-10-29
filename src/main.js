@@ -40,19 +40,11 @@ const router = createRouter({
 // =========================================
 // 🚨 核心改动：路由守卫（改成放行游客）
 // =========================================
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('userToken')
-
-  // 如果游客想直接访问 /login，放行
-  if (to.path === '/login') {
-    // 但如果他已经登录了，就别看登录页了，去首页
-    if (token) return next('/home')
-    return next()
+router.beforeEach((to) => {
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    return '/login' // 直接返回目标路径
   }
-
-  // 如果你想访问其他“受保护”的页面（比如以后的“个人中心”、“后台”）
-  // 可以在下面加判断，目前 Home 和 Products 游客都能看，所以全放行
-  next()
+  // 不需要拦截的话，什么都不用写，或者写 return true
 })
 
 const app = createApp(App)
