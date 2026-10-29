@@ -15,6 +15,10 @@
         <p>全新SP式神神绘世花鸟卷CG展卷，快来一探究竟！</p>
       </div>
     </div>
+	    <!-- 把商品列表直接嵌入首页 -->
+    <div style="padding-top: 40px;">
+      <Products />
+    </div>
   </div>
 </template>
 
@@ -73,3 +77,6 @@
   .news-section { padding: 20px; grid-template-columns: 1fr; } /* 手机上变成单列 */
 }
 </style>
+<script>
+	import Products from './Products.vue'
+</script>

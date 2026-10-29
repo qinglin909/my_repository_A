@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import 'dotenv/config';
 
 export default async function handler(request, response) {
   // 1. 只允许 POST 请求
@@ -9,8 +10,8 @@ export default async function handler(request, response) {
   const { username, password, isRegister } = request.body;
 
   // 2. 检查环境变量是否配置
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_KEY;
+  const supabaseUrl = "https://otrmipumtinhzxmxbvvb.supabase.co"
+  const supabaseKey = "sb_publishable_A749Sduo37WHv0RSSsDCGA_oVR-0sBo";
 
   if (!supabaseUrl || !supabaseKey) {
     return response.status(500).json({ 
@@ -79,7 +80,9 @@ export default async function handler(request, response) {
     });
 
   } catch (err) {
-    // 捕捉所有未知崩溃
-    return response.status(500).json({ message: '服务器崩溃: ' + err.message });
+    // 如果底层有 cause，把它揪出来
+    const detail = err.cause ? err.cause.message : '无底层报错';
+    return response.status(500).json({ 
+      message: `崩溃: ${err.message} | 底层原因: ${detail}` 
+    });
   }
-}

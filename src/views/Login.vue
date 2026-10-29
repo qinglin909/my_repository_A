@@ -132,7 +132,7 @@ const handleSubmit = async () => {
   
   try {
     // 1. 发送真实网络请求到你的 Vercel 后端
-    const res = await fetch('/api/hello', {
+    const res = await fetch('http://localhost:3000/api/hello', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
