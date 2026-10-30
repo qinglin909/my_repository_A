@@ -1,50 +1,93 @@
 <template>
   <div class="layout-container">
-    <!-- 顶部导航栏 -->
-    <header class="navbar">
-      <div class="logo">
-        <span class="logo-text">阴阳师</span>
-      </div>
-      <nav class="nav-menu">
-        <router-link to="/home">官网首页</router-link>
-        <router-link to="/products">精选商品</router-link>
-      </nav>
-
-      <!-- 右侧用户操作区 (带下拉) -->
-      <div class="user-action">
-        
-        <!-- 未登录状态 -->
-        <div class="user-dropdown" v-if="!isLoggedIn">
-          <div class="user-trigger">
-            <!-- SVG 小人头图标 -->
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <span>登录 / 注册</span>
-          </div>
-          
-          <!-- 悬浮弹出的下拉框 -->
-          <div class="dropdown-menu">
-            <div class="dropdown-content">
-              <p class="tip">欢迎来到阴阳师</p>
-              <button class="dropdown-login-btn" @click="goToLogin">立即登录</button>
-            </div>
-          </div>
+    <!-- 悬浮胶囊导航栏 -->
+    <header class="navbar-wrapper">
+      <div class="floating-pill">
+        <!-- 左侧：Logo -->
+        <div class="logo" @click="$router.push('/home')">
+          <div class="logo-icon"></div>
+          <span class="logo-text">My Workspace</span>
         </div>
 
-        <!-- 已登录状态 -->
-        <div class="user-dropdown" v-else>
-          <div class="user-trigger logged-in">
-            <div class="avatar">👤</div>
-            <span class="welcome-text">{{ username }}</span>
+        <!-- 中间：带折叠下拉的菜单 -->
+        <nav class="nav-menu">
+          <router-link to="/home" class="nav-item">首页</router-link>
+          
+          <!-- 下拉菜单：商品查询 -->
+          <div class="nav-dropdown" @click.stop="toggleDropdown('products')">
+            <div class="nav-item" :class="{ active: activeDropdown === 'products' }">
+              商品查询 
+              <svg class="chevron" :class="{ rotate: activeDropdown === 'products' }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <transition name="spring-dropdown">
+              <div class="dropdown-panel liquid-glass" v-if="activeDropdown === 'products'">
+                <router-link to="/products" class="dropdown-item">
+                  <span class="item-icon">🔍</span>
+                  <div class="item-text"><span class="title">全网商品搜索</span><span class="desc">搜索海量商品信息</span></div>
+                </router-link>
+                <router-link to="/products" class="dropdown-item">
+                  <span class="item-icon">📈</span>
+                  <div class="item-text"><span class="title">价格历史追踪</span><span class="desc">查看价格波动趋势</span></div>
+                </router-link>
+              </div>
+            </transition>
+          </div>
+
+          <!-- 下拉菜单：效率工具 -->
+          <div class="nav-dropdown" @click.stop="toggleDropdown('tools')">
+            <div class="nav-item" :class="{ active: activeDropdown === 'tools' }">
+              效率工具 
+              <svg class="chevron" :class="{ rotate: activeDropdown === 'tools' }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <transition name="spring-dropdown">
+              <div class="dropdown-panel liquid-glass" v-if="activeDropdown === 'tools'">
+                <router-link to="/plans" class="dropdown-item">
+                  <span class="item-icon">📅</span>
+                  <div class="item-text"><span class="title">我的计划表</span><span class="desc">管理每日待办与目标</span></div>
+                </router-link>
+                <router-link to="/notes" class="dropdown-item">
+                  <span class="item-icon">📝</span>
+                  <div class="item-text"><span class="title">随心笔记</span><span class="desc">记录灵感与知识</span></div>
+                </router-link>
+              </div>
+            </transition>
+          </div>
+        </nav>
+
+        <!-- 右侧：用户操作区 -->
+        <div class="user-action">
+          <div class="user-dropdown" v-if="!userStore.isLoggedIn">
+            <button type="button" class="login-btn" @click="goToLogin">登录 / 注册</button>
           </div>
           
-          <div class="dropdown-menu">
-            <div class="dropdown-content">
-              <p class="tip">欢迎回来，大人</p>
-              <button class="dropdown-logout-btn" @click="logout">退出登录</button>
+          <div class="user-dropdown" v-else>
+            <div class="user-trigger" @click.stop="toggleUserMenu">
+              <div class="avatar">
+                <img v-if="userStore.avatarUrl" :src="userStore.avatarUrl" alt="avatar" />
+                <span v-else>👤</span>
+              </div>
+              <span class="welcome-text">{{ userStore.username }}</span>
+              <svg class="chevron" :class="{ rotate: showUserMenu }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
+            
+            <transition name="spring-dropdown">
+              <div class="dropdown-panel user-dropdown-menu liquid-glass" v-if="showUserMenu">
+                <div class="dropdown-header">
+                  <p class="welcome-msg">你好，{{ userStore.username }}</p>
+                  <p class="email-msg">已登录工作台</p>
+                </div>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-item" @click="goToProfile">
+                  <span class="item-icon">👤</span><div class="item-text"><span class="title">个人中心</span></div>
+                </div>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-item danger" @click="logout">
+                  <span class="item-icon">🚪</span><div class="item-text"><span class="title">退出登录</span></div>
+                </div>
+              </div>
+            </transition>
           </div>
         </div>
-        
       </div>
     </header>
 
@@ -55,115 +98,132 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
-const isLoggedIn = ref(false)
-const username = ref('')
+const userStore = useUserStore()
 
-onMounted(() => {
-  isLoggedIn.value = !!localStorage.getItem('userToken')
-  username.value = localStorage.getItem('username') || '大人'
-})
+const activeDropdown = ref(null)
+const showUserMenu = ref(false)
+
+const toggleDropdown = (name) => {
+  activeDropdown.value = activeDropdown.value === name ? null : name
+  showUserMenu.value = false 
+}
+const toggleUserMenu = () => {
+  showUserMenu.value = !showUserMenu.value
+  activeDropdown.value = null 
+}
+const closeMenus = () => {
+  activeDropdown.value = null
+  showUserMenu.value = false
+}
+
+onMounted(() => document.addEventListener('click', closeMenus))
+onUnmounted(() => document.removeEventListener('click', closeMenus))
 
 const goToLogin = () => router.push('/login')
-const logout = () => {
-  localStorage.removeItem('userToken')
-  localStorage.removeItem('username')
-  isLoggedIn.value = false
-  router.push('/login')
-}
+const goToProfile = () => { closeMenus(); router.push('/profile') }
+const logout = () => { closeMenus(); userStore.logout(); router.push('/login') }
 </script>
 
 <style scoped>
-/* 基础布局 */
-.layout-container { min-height: 100vh; background-color: #1a1a1a; display: flex; flex-direction: column; }
-.navbar {
-  position: fixed; top: 0; left: 0; width: 100%; height: 64px;
-  background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px);
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 0 40px; box-sizing: border-box; z-index: 100;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+/* 页面骨架 */
+.layout-container { min-height: 100vh; display: flex; flex-direction: column; }
+.main-content { flex: 1; padding-top: 100px; }
+
+/* 悬浮胶囊 */
+.navbar-wrapper {
+  position: fixed; top: 24px; left: 0; width: 100%;
+  display: flex; justify-content: center; z-index: 1000;
+  pointer-events: none;
 }
-.logo-text { color: #d4af37; font-size: 24px; font-weight: bold; letter-spacing: 2px; }
-.nav-menu { display: flex; gap: 30px; }
-.nav-menu a { color: #ccc; text-decoration: none; font-size: 15px; transition: 0.3s; white-space: nowrap; }
-.nav-menu a:hover, .nav-menu a.router-link-active { color: #d4af37; }
-.main-content { flex: 1; }
-
-/* =========================================
-   高级悬浮下拉菜单逻辑
-   ========================================= */
-.user-action { position: relative; }
-
-.user-dropdown {
-  position: relative;
-  padding: 10px 0; /* 给上方留点空间，方便鼠标滑入 */
+.floating-pill {
+  pointer-events: auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 32px;
+  padding: 8px 12px 8px 20px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
 }
 
-/* 触发器（鼠标放在上面的区域） */
+/* Logo */
+.logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.logo-icon { width: 22px; height: 22px; background: linear-gradient(135deg, var(--primary-color), #8a2be2); border-radius: 6px; }
+.logo-text { font-size: 17px; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px;}
+
+/* 菜单交互 */
+.nav-menu { display: flex; gap: 4px; align-items: center; }
+.nav-item {
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 16px; border-radius: var(--radius-lg);
+  font-size: 14px; font-weight: 600; color: #555; cursor: pointer;
+  transition: all 0.2s ease; white-space: nowrap;
+}
+.nav-item:hover, .nav-item.active { color: var(--text-main); background: rgba(0, 0, 0, 0.04); }
+
+.chevron { transition: transform 0.3s var(--spring-ease); color: var(--text-muted); }
+.chevron.rotate { transform: rotate(180deg); color: var(--text-main); }
+
+/* 下拉面板定位 */
+.nav-dropdown { position: relative; }
+.dropdown-panel {
+  position: absolute; top: calc(100% + 12px); left: 50%;
+  transform: translateX(-50%);
+  min-width: 260px;
+  padding: 8px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+
+/* 下拉项 */
+.dropdown-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  text-decoration: none; cursor: pointer;
+  transition: background 0.2s;
+}
+.dropdown-item:hover { background: rgba(0, 0, 0, 0.03); }
+.item-icon { font-size: 18px; margin-top: 2px; }
+.item-text { display: flex; flex-direction: column; gap: 2px; }
+.item-text .title { font-size: 14px; font-weight: 600; color: var(--text-main); }
+.item-text .desc { font-size: 12px; color: var(--text-muted); }
+
+/* 右侧用户区 */
+.user-dropdown { position: relative; }
 .user-trigger {
-  display: flex; align-items: center; gap: 8px;
-  color: #d4af37; font-size: 15px; cursor: pointer;
-  transition: opacity 0.3s;
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 4px 12px 4px 4px; border-radius: var(--radius-lg);
+  transition: background 0.2s;
 }
-.user-trigger:hover { opacity: 0.8; }
+.user-trigger:hover { background: rgba(0, 0, 0, 0.04); }
+.avatar { width: 30px; height: 30px; background: #eef2f6; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 14px; overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.welcome-text { font-weight: 600; color: var(--text-main); font-size: 14px; }
 
-.logged-in .avatar {
-  width: 28px; height: 28px; background: #333;
-  border-radius: 50%; display: flex; justify-content: center; align-items: center;
-  border: 1px solid #d4af37; font-size: 14px;
+/* 用户菜单特殊排版 */
+.user-dropdown-menu { left: auto; right: 0; transform: none; min-width: 240px; }
+.dropdown-header { padding: 10px 14px; }
+.welcome-msg { font-size: 14px; font-weight: 700; color: var(--text-main); margin: 0 0 2px 0; }
+.email-msg { font-size: 12px; color: var(--text-muted); margin: 0; }
+.dropdown-divider { height: 1px; background: var(--border-color); margin: 6px 8px; }
+.dropdown-item.danger .title { color: #ef4444; }
+.dropdown-item.danger:hover { background: rgba(239, 68, 68, 0.08); }
+
+/* 登录按钮 */
+.login-btn {
+  padding: 8px 20px; border-radius: var(--radius-lg); background: #1a1a1a; color: #fff;
+  border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s;
 }
-.welcome-text { color: #eee; font-size: 14px; }
+.login-btn:hover { background: #333; }
 
-/* 下拉菜单面板（默认隐藏） */
-.dropdown-menu {
-  position: absolute; top: 100%; right: 0;
-  width: 200px; padding-top: 10px;
-  opacity: 0; visibility: hidden;
-  transform: translateY(10px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 200;
-}
-
-/* 鼠标悬浮时显示下拉菜单 */
-.user-dropdown:hover .dropdown-menu {
-  opacity: 1; visibility: visible; transform: translateY(0);
-}
-
-/* 下拉框内部样式（深色磨砂玻璃） */
-.dropdown-content {
-  background: rgba(30, 30, 30, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
-
-.tip { color: #aaa; font-size: 13px; margin: 0 0 12px 0; text-align: center; }
-
-.dropdown-login-btn {
-  width: 100%; padding: 10px; background: #d4af37; color: #000;
-  border: none; border-radius: 6px; font-weight: bold; cursor: pointer;
-  transition: 0.2s;
-}
-.dropdown-login-btn:hover { background: #f7ce46; }
-
-.dropdown-logout-btn {
-  width: 100%; padding: 10px; background: transparent; color: #ef4444;
-  border: 1px solid #ef4444; border-radius: 6px; font-weight: bold; cursor: pointer;
-  transition: 0.2s;
-}
-.dropdown-logout-btn:hover { background: rgba(239, 68, 68, 0.1); }
-
-/* 手机端适配 */
-@media (max-width: 768px) {
-  .navbar { height: auto; padding: 15px 20px; flex-direction: column; gap: 15px; }
-  .nav-menu { gap: 15px; flex-wrap: wrap; justify-content: center; }
-  .main-content { padding-top: 120px; }
-  .dropdown-menu { right: 50%; transform: translateX(50%) translateY(10px); }
-  .user-dropdown:hover .dropdown-menu { transform: translateX(50%) translateY(0); }
+/* 修正用户菜单的动画位移（因为它没有 translateX 居中） */
+.user-dropdown-menu.spring-dropdown-enter-from,
+.user-dropdown-menu.spring-dropdown-leave-to {
+  transform: translateY(-10px) scale(0.95);
 }
 </style>

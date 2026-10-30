@@ -1,7 +1,8 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-
+import { useUserStore } from '@/stores/user'
+const userStore = useUserStore()
 const router = useRouter()
 
 // ================= 页面状态 =================
@@ -156,9 +157,9 @@ const handleSubmit = async () => {
       throw new Error(data.message || '操作失败')
     }
 
-    // 4. 验证通过，存入真实的 Token 和用户名（路由守卫靠这个放行）
-    localStorage.setItem('userToken', 'fake-jwt-token-12345')
-    localStorage.setItem('username', data.user.username)
+    // 🚨 不用 localStorage 了，全部交给 Pinia
+      const userRole = form.username === 'admin' ? 'admin' : 'user'
+      userStore.login('fake-jwt-token-12345', form.username, userRole)
     
     // 5. 跳转到首页
     router.push('/home')
