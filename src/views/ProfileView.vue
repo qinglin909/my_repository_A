@@ -1,3 +1,4 @@
+<!-- 个人中心：包含头像裁剪上传和配置菜单 -->
 <template>
   <div class="page-container">
     <div class="bg-glow top-left"></div>

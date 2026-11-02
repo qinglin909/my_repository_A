@@ -1,3 +1,4 @@
+<!-- 首页工作台：包含数据面板和快捷入口 -->
 <template>
   <div class="page-container">
     <!-- 顶部欢迎区 -->

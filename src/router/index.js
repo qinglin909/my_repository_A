@@ -1,18 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
+import userRoutes from './modules/user' // 🚨 引入刚才写的模块路由
+import trendsRoutes from './modules/trends'
+import toolsRoutes from './modules/tools'
 
 const routes = [
-  { path: '/login', name: 'Login', component: () => import('@/views/Login.vue') },  
+  { path: '/login', name: 'Login', component: () => import('@/views/LoginView.vue') },
   {
     path: '/',
     component: MainLayout,
     children: [
       { path: '', redirect: '/home' },
-      { path: 'home', name: 'Home', component: () => import('@/views/Home.vue') },
-      // 🚨 个人中心路由
-      { path: 'profile', name: 'Profile', component: () => import('@/views/Profile.vue') },
-      { path: 'products', name: 'Products', component: () => import('@/views/Products.vue') },
-      { path: 'admin', name: 'Admin', component: () => import('@/views/Admin.vue') }
+      ...userRoutes, // 🚨 把用户模块的路由展开
+	  ...trendsRoutes,
+	  ...toolsRoutes
     ]
   },
   { path: '/:pathMatch(.*)*', redirect: '/home' }

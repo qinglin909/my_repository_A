@@ -1,3 +1,4 @@
+<!-- 全局导航框架：包含顶部悬浮导航栏和用户下拉菜单 -->
 <template>
   <div class="layout-container">
     <!-- 悬浮胶囊导航栏 -->
@@ -32,7 +33,9 @@
               </div>
             </transition>
           </div>
-
+			<router-link to="/trends" class="nav-item">全网热搜</router-link>
+			<router-link to="/navigator" class="nav-item">宝藏导航</router-link>
+			<router-link to="/ranking" class="nav-item">分数转换</router-link>
           <!-- 下拉菜单：效率工具 -->
           <div class="nav-dropdown" @click.stop="toggleDropdown('tools')">
             <div class="nav-item" :class="{ active: activeDropdown === 'tools' }">
