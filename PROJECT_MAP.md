@@ -1,6 +1,6 @@
 # 🗺️ My Workspace 项目地图 (Project Map)
 
-> ⏱️ 最后同步时间：2026/11/2 11:49:10
+> ⏱️ 最后同步时间：2026/11/3 08:54:55
 
 ## 📂 目录与文件说明
 *(提示：在代码文件的第一行写下 `<!-- 你的说明 -->` 或 `// 你的说明`，脚本会自动提取到此处。)*
@@ -26,13 +26,13 @@
   🔧 [工具] `supabase.js` - *src/utils/supabase.js*
 📁 **views/**
   🖥️ [页面] `AdminView.vue`
-  🖥️ [页面] `ComplaintView.vue` - *左侧输入区*
   🖥️ [页面] `HomeView.vue` - *首页工作台：包含数据面板和快捷入口*
   🖥️ [页面] `LoginView.vue` - *================= 左侧：表单区 =================*
   🖥️ [页面] `NavigatorView.vue` - *宝藏导航 + 秘密管理箱*
   🖥️ [页面] `NotesView.vue` - *左侧：笔记列表*
   🖥️ [页面] `ProductsView.vue` - *原生滚动容器*
   🖥️ [页面] `ProfileView.vue` - *个人中心：包含头像裁剪上传和配置菜单*
+  🖥️ [页面] `RankingView.vue` - *输入区*
   🖥️ [页面] `TrendsView.vue` - *全网热搜聚合：接入专属 Cloudflare Worker，极致丝滑防抖版*
 
 
