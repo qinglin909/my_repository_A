@@ -1,3 +1,4 @@
+import 'dotenv/config'; // 🚨 加载环境变量
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
@@ -12,27 +13,30 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
+
+// 🚨 安全加固：限制跨域来源，只允许你的正式域名和本地开发
+app.use(cors({
+  origin: [
+    'https://www.solar-lunar.cloud', 
+    'https://solar-lunar.cloud',
+    'http://localhost:5173'
+  ],
+  credentials: true
+}));
 app.use(express.json());
-const JWT_SECRET = 'SOLAR_LUNAR_CLOUD_SECRET_2026';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_do_not_use_in_prod';
 
 // ==========================================
-// 1. 初始化 LowDB (基于 JSON 的本地数据库)
+// 1. 初始化 LowDB
 // ==========================================
 const dbFile = path.join(__dirname, 'db.json');
 const adapter = new JSONFile(dbFile);
 const db = new Low(adapter, { users: [] });
 
 await db.read();
-const rootUser = db.data.users.find(u => u.username === 'root');
-if (!rootUser) {
-  const hash = bcrypt.hashSync('123456', 10);
-  db.data.users.push({ id: Date.now(), username: 'root', passwordHash: hash });
-  await db.write();
-  console.log('✅ 默认测试账号已创建: root / 123456');
-} else {
-  console.log('✅ 数据库加载成功');
-}
+// 🚨 安全加固：已彻底删除自动生成 root/123456 弱口令账号的代码
+console.log('✅ 数据库加载成功，当前用户数:', db.data.users.length);
 
 // ==========================================
 // 2. 安全限流与鉴权中间件
@@ -112,69 +116,10 @@ app.get('/api/products', (req, res) => {
 });
 
 // ==========================================
-// 5. 全网热搜代理接口 (终极防崩版)
+// 5. 启动服务器
 // ==========================================
-app.get('/api/trends', async (req, res) => {
-  const { platform } = req.query;
-  
-  const urls = {
-    weibo: 'https://api.vvhan.com/api/hotlist/wbHot',
-    zhihu: 'https://api.vvhan.com/api/hotlist/zhihuHot',
-    douyin: 'https://api.vvhan.com/api/hotlist/douyinHot',
-    baidu: 'https://api.vvhan.com/api/hotlist/baiduRD',
-    toutiao: 'https://api.vvhan.com/api/hotlist/toutiao'
-  };
-
-  if (!urls[platform]) {
-    return res.status(400).json({ message: '不支持的平台' });
-  }
-
-  try {
-    // 增加 5 秒超时控制，防止第三方卡死导致服务器资源耗尽
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    const response = await fetch(urls[platform], {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      },
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`第三方返回状态码: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // 校验数据格式
-    if (!data.data || !Array.isArray(data.data)) {
-       throw new Error('第三方数据格式异常');
-    }
-
-    res.json(data);
-
-  } catch (err) {
-    console.error(`⚠️ 获取 ${platform} 失败，已启用兜底机制:`, err.message);
-    
-    // 🚨 核心防崩逻辑：就算第三方挂了，也返回 200 状态码和兜底数据
-    // 这样前端不会报 500，只会显示“加载失败”
-    res.json({ 
-      success: false, 
-      message: '第三方接口暂时不稳定',
-      data: [
-        { title: '榜单加载失败，请稍后再试或切换其他平台', hot: '0', url: '#' }
-      ] 
-    });
-  }
-});
-
-// ==========================================
-// 6. 启动服务器
-// ==========================================
-app.listen(3000, () => {
-  console.log(`\n🚀 完整后端已启动: http://localhost:3000`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`\n🚀 生产级后端已启动: http://localhost:${PORT}`);
   console.log(`💾 数据库文件: ${dbFile}\n`);
 });

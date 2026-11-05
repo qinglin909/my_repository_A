@@ -1,4 +1,4 @@
-<!-- 全网热搜聚合：接入专属 Cloudflare Worker，极致丝滑防抖版 -->
+<!-- 全网热搜聚合：直连 Cloudflare Worker，极致丝滑防抖版 -->
 <template>
   <div class="page-container">
     <header class="page-header">
@@ -61,16 +61,19 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router' // 🚨 引入路由用于拦截
+import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
+// 恢复你原本的专属 Worker 接口
+const API_BASE = 'https://60s.3450934729.workers.dev/v2'
+
 const platforms = [
-  { id: 'weibo', name: '微博热搜', icon: '🔥' },
-  { id: 'zhihu', name: '知乎热榜', icon: '💡' },
-  { id: 'douyin', name: '抖音热点', icon: '🎵' },
-  { id: 'baidu', name: '百度热搜', icon: '🔍' },
-  { id: 'toutiao', name: '头条热榜', icon: '📰' }
+  { id: 'weibo', name: '微博热搜', icon: '🔥', api: `${API_BASE}/weibo` },
+  { id: 'zhihu', name: '知乎热榜', icon: '💡', api: `${API_BASE}/zhihu` },
+  { id: 'douyin', name: '抖音热点', icon: '🎵', api: `${API_BASE}/douyin` },
+  { id: 'baidu', name: '百度热搜', icon: '🔍', api: `${API_BASE}/baidu/hot` },
+  { id: 'toutiao', name: '头条热榜', icon: '📰', api: `${API_BASE}/toutiao` }
 ]
 
 const currentPlatform = ref('weibo')
@@ -94,6 +97,9 @@ const fetchData = async (platformId, forceRefresh = false) => {
     return
   }
 
+  const platform = platforms.find(p => p.id === platformId)
+  if (!platform?.api) return
+
   // 2. 如果有上一个未完成的请求，直接掐断它（防抖核心）
   if (abortController) {
     abortController.abort()
@@ -104,24 +110,13 @@ const fetchData = async (platformId, forceRefresh = false) => {
   errorMsg.value = ''
 
   try {
-    // 请求后端代理
-    const res = await fetch(`/api/trends?platform=${platformId}`, { 
-      signal: abortController.signal 
-    })
-    
+    // 直连你原本的 Worker 接口
+    const res = await fetch(platform.api, { signal: abortController.signal })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     
     const json = await res.json()
-    
-    // 兼容各种格式的兜底处理
     const rawList = (json.data || []).slice(0, 10)
     
-    if (rawList.length === 0 || json.success === false) {
-      errorMsg.value = '数据加载失败，请稍后再试'
-      currentList.value = []
-      return
-    }
-
     const parsedList = rawList.map(item => ({
       title: item.title || item.name || item.word || '无标题',
       hot: item.hot || item.hot_value || item.score || '',
@@ -138,8 +133,8 @@ const fetchData = async (platformId, forceRefresh = false) => {
       console.log('请求被安全取消')
       return
     }
-    console.error(`${currentPlatformName.value} 请求失败:`, err)
-    errorMsg.value = '网络连接异常，请稍后重试'
+    console.error(`${platform.name} 请求失败:`, err)
+    errorMsg.value = '数据加载失败，请检查网络或开启代理'
     currentList.value = []
   } finally {
     // 只有当前请求是最后发起的那个，才关掉 loading
@@ -169,7 +164,7 @@ const openLink = (url) => {
 }
 
 onMounted(() => {
-  // 🚨 手机端彻底拦截：如果屏幕宽度小于 768，直接踢回首页
+  // 🚨 手机端彻底拦截
   if (window.innerWidth <= 768) {
     router.replace('/home')
     return
@@ -179,7 +174,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 样式与之前完全一致，直接复用 */
+/* 样式完全复用你原来的 */
 .page-header { margin-bottom: 30px; }
 .title { font-size: 32px; font-weight: 800; color: var(--text-main); margin: 0 0 8px 0; }
 .subtitle { color: var(--text-secondary); font-size: 15px; }
