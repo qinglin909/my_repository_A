@@ -33,9 +33,11 @@
               </div>
             </transition>
           </div>
-			<router-link to="/trends" class="nav-item">全网热搜</router-link>
-			<router-link to="/navigator" class="nav-item">宝藏导航</router-link>
-			<router-link to="/ranking" class="nav-item">分数转换</router-link>
+          
+          <router-link to="/trends" class="nav-item">全网热搜</router-link>
+          <router-link to="/navigator" class="nav-item">宝藏导航</router-link>
+          <router-link to="/ranking" class="nav-item">分数转换</router-link>
+          
           <!-- 下拉菜单：效率工具 -->
           <div class="nav-dropdown" @click.stop="toggleDropdown('tools')">
             <div class="nav-item" :class="{ active: activeDropdown === 'tools' }">
@@ -97,6 +99,9 @@
     <main class="main-content">
       <router-view></router-view>
     </main>
+
+    <!-- 🔥 挂载大明日历悬浮挂件 -->
+    <CalendarView />
   </div>
 </template>
 
@@ -104,6 +109,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+// 🔥 引入大明日历组件
+import CalendarView from '@/views/CalendarView.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
