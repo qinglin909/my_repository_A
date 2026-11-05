@@ -31,12 +31,21 @@ export default defineConfig({
       ]
     },
     
-    // 🔮 3. 保留你的智谱 API 代理配置
+    // 🔮 3. 代理配置
     proxy: {
+      // 原有的智谱 AI 代理
       '/zhipu': {
         target: 'https://open.bigmodel.cn',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/zhipu/, '')
+      },
+      // 🚨 新增：本地 Node 后端代理
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        // 如果你的后端代码里路由本身带有 /api，这里不需要 rewrite
+        // 如果后端代码是 app.post('/hello') 而不是 '/api/hello'，则需要加上：
+        // rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
   }
