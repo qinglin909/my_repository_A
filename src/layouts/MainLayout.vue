@@ -34,7 +34,9 @@
             </transition>
           </div>
           
-          <router-link to="/trends" class="nav-item">全网热搜</router-link>
+          <!-- 🚨 热搜入口：加上 hide-on-mobile 类，手机端隐藏 -->
+          <router-link to="/trends" class="nav-item hide-on-mobile">全网热搜</router-link>
+          
           <router-link to="/navigator" class="nav-item">宝藏导航</router-link>
           <router-link to="/ranking" class="nav-item">分数转换</router-link>
           
@@ -258,6 +260,11 @@ const logout = () => { closeMenus(); userStore.logout(); router.push('/login') }
   
   .dropdown-panel {
     position: fixed; top: 60px; left: 50%; transform: translateX(-50%); width: calc(100vw - 32px);
+  }
+
+  /* 🚨 手机端隐藏热搜按钮 */
+  .hide-on-mobile {
+    display: none !important;
   }
 }
 </style>

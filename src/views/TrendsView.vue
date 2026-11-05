@@ -1,4 +1,4 @@
-<!-- 全网热搜聚合：接入自有服务器代理，彻底解决跨域与超时 -->
+<!-- 全网热搜聚合：接入专属 Cloudflare Worker，极致丝滑防抖版 -->
 <template>
   <div class="page-container">
     <header class="page-header">
@@ -61,8 +61,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router' // 🚨 引入路由用于拦截
 
-// 🚨 注意：这里去掉了原来的 API_BASE，因为现在统一请求我们自己的 /api
+const router = useRouter()
+
 const platforms = [
   { id: 'weibo', name: '微博热搜', icon: '🔥' },
   { id: 'zhihu', name: '知乎热榜', icon: '💡' },
@@ -102,8 +104,7 @@ const fetchData = async (platformId, forceRefresh = false) => {
   errorMsg.value = ''
 
   try {
-    // 🚨 核心修改：请求我们自己的后端代理接口，不再直连第三方
-    // Vite 本地开发时会转发给 localhost:3000，线上 Vercel 会转发给你的阿里云
+    // 请求后端代理
     const res = await fetch(`/api/trends?platform=${platformId}`, { 
       signal: abortController.signal 
     })
@@ -111,8 +112,16 @@ const fetchData = async (platformId, forceRefresh = false) => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     
     const json = await res.json()
+    
+    // 兼容各种格式的兜底处理
     const rawList = (json.data || []).slice(0, 10)
     
+    if (rawList.length === 0 || json.success === false) {
+      errorMsg.value = '数据加载失败，请稍后再试'
+      currentList.value = []
+      return
+    }
+
     const parsedList = rawList.map(item => ({
       title: item.title || item.name || item.word || '无标题',
       hot: item.hot || item.hot_value || item.score || '',
@@ -130,7 +139,7 @@ const fetchData = async (platformId, forceRefresh = false) => {
       return
     }
     console.error(`${currentPlatformName.value} 请求失败:`, err)
-    errorMsg.value = '数据加载失败，请稍后重试'
+    errorMsg.value = '网络连接异常，请稍后重试'
     currentList.value = []
   } finally {
     // 只有当前请求是最后发起的那个，才关掉 loading
@@ -160,12 +169,17 @@ const openLink = (url) => {
 }
 
 onMounted(() => {
+  // 🚨 手机端彻底拦截：如果屏幕宽度小于 768，直接踢回首页
+  if (window.innerWidth <= 768) {
+    router.replace('/home')
+    return
+  }
   fetchData('weibo')
 })
 </script>
 
 <style scoped>
-/* 样式完全复用你原来的 */
+/* 样式与之前完全一致，直接复用 */
 .page-header { margin-bottom: 30px; }
 .title { font-size: 32px; font-weight: 800; color: var(--text-main); margin: 0 0 8px 0; }
 .subtitle { color: var(--text-secondary); font-size: 15px; }
