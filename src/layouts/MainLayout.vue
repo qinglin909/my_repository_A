@@ -109,7 +109,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-// 🔥 引入大明日历组件
 import CalendarView from '@/views/CalendarView.vue'
 
 const router = useRouter()
@@ -164,7 +163,7 @@ const logout = () => { closeMenus(); userStore.logout(); router.push('/login') }
 
 /* Logo */
 .logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.logo-icon { width: 22px; height: 22px; background: linear-gradient(135deg, var(--primary-color), #8a2be2); border-radius: 6px; }
+.logo-icon { width: 22px; height: 22px; background: linear-gradient(135deg, var(--primary-color), #8a2be2); border-radius: 6px; flex-shrink: 0; }
 .logo-text { font-size: 17px; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px;}
 
 /* 菜单交互 */
@@ -211,7 +210,7 @@ const logout = () => { closeMenus(); userStore.logout(); router.push('/login') }
   transition: background 0.2s;
 }
 .user-trigger:hover { background: rgba(0, 0, 0, 0.04); }
-.avatar { width: 30px; height: 30px; background: #eef2f6; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 14px; overflow: hidden; }
+.avatar { width: 30px; height: 30px; background: #eef2f6; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 14px; overflow: hidden; flex-shrink: 0; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .welcome-text { font-weight: 600; color: var(--text-main); font-size: 14px; }
 
@@ -227,13 +226,38 @@ const logout = () => { closeMenus(); userStore.logout(); router.push('/login') }
 /* 登录按钮 */
 .login-btn {
   padding: 8px 20px; border-radius: var(--radius-lg); background: #1a1a1a; color: #fff;
-  border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s;
+  border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
 }
 .login-btn:hover { background: #333; }
 
-/* 修正用户菜单的动画位移（因为它没有 translateX 居中） */
+/* 修正用户菜单的动画位移 */
 .user-dropdown-menu.spring-dropdown-enter-from,
 .user-dropdown-menu.spring-dropdown-leave-to {
   transform: translateY(-10px) scale(0.95);
+}
+
+/* =========================================
+   手机端适配 (Media Queries)
+   ========================================= */
+@media (max-width: 768px) {
+  .main-content { padding-top: 80px; }
+  .navbar-wrapper { top: 0; padding: 0; }
+  
+  .floating-pill {
+    width: 100%; border-radius: 0; padding: 10px 16px; gap: 10px; justify-content: space-between;
+  }
+  
+  .nav-menu {
+    overflow-x: auto; white-space: nowrap; justify-content: flex-start; padding-bottom: 4px; flex: 1; -webkit-overflow-scrolling: touch;
+  }
+  .nav-menu::-webkit-scrollbar { display: none; }
+  .nav-item { padding: 8px 12px; font-size: 13px; }
+  
+  .logo-text { display: none; }
+  .welcome-text { display: none; }
+  
+  .dropdown-panel {
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%); width: calc(100vw - 32px);
+  }
 }
 </style>

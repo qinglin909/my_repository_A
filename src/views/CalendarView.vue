@@ -159,7 +159,6 @@ function createDayObj(date, isCurrentMonth) {
 const selectDate = (day) => {
   activeDateStr.value = day.dateStr
   if (!day.isCurrentMonth) {
-    // 如果点击了非当前月的日期，自动切换月份
     currentYear.value = day.date.getFullYear()
     currentMonth.value = day.date.getMonth() + 1
   }
@@ -186,21 +185,16 @@ const nextMonth = () => {
 </script>
 
 <style scoped>
-/* =========================================
-   1. 悬浮交互逻辑 (隐藏与滑出)
-   ========================================= */
-
 /* 外部容器固定在右侧 */
 .calendar-hover-wrapper {
   position: fixed;
   top: 105px; 
-  right: 0; /* 贴在屏幕右边缘 */
+  right: 0;
   z-index: 999;
   display: flex;
   align-items: flex-start;
-  /* 默认向右侧藏起来，只露出 32px 的触发器 */
-  transform: translateX(260px); 
-  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* 丝滑动画 */
+  transform: translateX(260px);
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 /* 鼠标悬浮时滑出 */
@@ -224,7 +218,7 @@ const nextMonth = () => {
   color: #8b2e1f;
   font-weight: bold;
   font-size: 13px;
-  writing-mode: vertical-lr; /* 文字竖排 */
+  writing-mode: vertical-lr;
   letter-spacing: 2px;
 }
 
@@ -232,7 +226,7 @@ const nextMonth = () => {
 .calendar-card {
   width: 260px; 
   background: #fff;
-  border-radius: 12px 0 0 12px; /* 只留左边圆角 */
+  border-radius: 12px 0 0 12px;
   box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
   padding: 12px;
   border: 1px solid rgba(0,0,0,0.06);
@@ -242,172 +236,46 @@ const nextMonth = () => {
   gap: 8px;
 }
 
-/* =========================================
-   2. 日历内部排版细节 (保持之前的瘦身版)
-   ========================================= */
-
 /* 头部信息 */
-.cal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.cal-header h1 {
-  font-size: 14px; 
-  margin: 0;
-  color: #8b2e1f;
-  letter-spacing: 1px;
-}
-
-.cal-header .sub {
-  font-size: 10px; 
-  color: #999;
-  margin-top: 2px;
-}
-
-.today-info {
-  text-align: right;
-}
-
-.today-info .solar-day {
-  font-size: 12px; 
-  font-weight: 600;
-  color: #333;
-}
-
-.today-info .lunar-day {
-  font-size: 10px;
-  color: #8b2e1f;
-  margin-top: 1px;
-}
+.cal-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.cal-header h1 { font-size: 14px; margin: 0; color: #8b2e1f; letter-spacing: 1px; }
+.cal-header .sub { font-size: 10px; color: #999; margin-top: 2px; }
+.today-info { text-align: right; }
+.today-info .solar-day { font-size: 12px; font-weight: 600; color: #333; }
+.today-info .lunar-day { font-size: 10px; color: #8b2e1f; margin-top: 1px; }
 
 /* 月份控制 */
-.month-control {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
-  color: #333;
-  font-size: 12px;
-  margin-top: 2px;
-}
-
-.month-control button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #666;
-  font-size: 10px;
-  padding: 2px 6px;
-}
-
-.month-control button:hover {
-  color: #8b2e1f;
-}
+.month-control { display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #333; font-size: 12px; margin-top: 2px; }
+.month-control button { background: none; border: none; cursor: pointer; color: #666; font-size: 10px; padding: 2px 6px; }
+.month-control button:hover { color: #8b2e1f; }
 
 /* 七曜表头 */
-.week-header {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  text-align: center;
-  font-size: 10px;
-  color: #999;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #f0f0f0;
-}
+.week-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 10px; color: #999; padding-bottom: 4px; border-bottom: 1px solid #f0f0f0; }
 
 /* 日历网格 */
-.days-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px; 
-}
-
-.day-cell {
-  aspect-ratio: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-}
-
-.day-cell:hover {
-  background: #f6f1e7;
-}
-
-.day-cell .num {
-  font-size: 11px; 
-  color: #333;
-  font-weight: 500;
-}
-
-.day-cell .lunar {
-  font-size: 8px; 
-  color: #999;
-  transform: scale(0.85); 
-  margin-top: -1px;
-}
-
-/* 非本月日期变淡 */
-.day-cell.not-current-month .num,
-.day-cell.not-current-month .lunar {
-  opacity: 0.25;
-}
-
-/* 今天 */
-.day-cell.is-today {
-  border: 1px solid #8b2e1f;
-}
-.day-cell.is-today .num {
-  color: #8b2e1f;
-}
-
-/* 选中状态 */
-.day-cell.is-selected {
-  background: #8b2e1f !important;
-}
-.day-cell.is-selected .num,
-.day-cell.is-selected .lunar {
-  color: #fff !important;
-}
+.days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+.day-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; transition: all 0.2s; position: relative; }
+.day-cell:hover { background: #f6f1e7; }
+.day-cell .num { font-size: 11px; color: #333; font-weight: 500; }
+.day-cell .lunar { font-size: 8px; color: #999; transform: scale(0.85); margin-top: -1px; }
+.day-cell.not-current-month .num, .day-cell.not-current-month .lunar { opacity: 0.25; }
+.day-cell.is-today { border: 1px solid #8b2e1f; }
+.day-cell.is-today .num { color: #8b2e1f; }
+.day-cell.is-selected { background: #8b2e1f !important; }
+.day-cell.is-selected .num, .day-cell.is-selected .lunar { color: #fff !important; }
 
 /* 底部详情 */
-.detail-box {
-  background: #faf7f2;
-  border-radius: 6px;
-  padding: 8px;
-  font-size: 10px; 
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-top: 2px;
-}
-
-.detail-row {
-  display: flex;
-  line-height: 1.3;
-}
-
-.detail-row .label {
-  color: #999;
-  width: 30px;
-  flex-shrink: 0;
-}
-
-.detail-row .val {
-  color: #333;
-  flex: 1;
-  display: -webkit-box;
-  -webkit-line-clamp: 2; 
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
+.detail-box { background: #faf7f2; border-radius: 6px; padding: 8px; font-size: 10px; display: flex; flex-direction: column; gap: 3px; margin-top: 2px; }
+.detail-row { display: flex; line-height: 1.3; }
+.detail-row .label { color: #999; width: 30px; flex-shrink: 0; }
+.detail-row .val { color: #333; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .val.yi { color: #1a7f37; }
 .val.ji { color: #c9302c; }
+
+/* 手机端隐藏悬浮日历 */
+@media (max-width: 768px) {
+  .calendar-hover-wrapper {
+    display: none;
+  }
+}
 </style>
