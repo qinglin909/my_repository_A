@@ -12,17 +12,17 @@
 
         <!-- 中间：带折叠下拉的菜单 -->
         <nav class="nav-menu">
-          <router-link to="/home" class="nav-item">首页</router-link>
+          <router-link to="/home" class="nav-item" active-class="route-active" exact-active-class="route-active">首页</router-link>
           
           <!-- 下拉菜单：商品查询 -->
           <div class="nav-dropdown" @click.stop="toggleDropdown('products')">
-            <div class="nav-item" :class="{ active: activeDropdown === 'products' }">
+            <div class="nav-item" :class="{ active: activeDropdown === 'products', 'route-active': isRouteActive('/products') }">
               商品查询 
               <svg class="chevron" :class="{ rotate: activeDropdown === 'products' }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <transition name="spring-dropdown">
               <div class="dropdown-panel liquid-glass" v-if="activeDropdown === 'products'">
-                <router-link to="/products" class="dropdown-item">
+                <router-link to="/products" class="dropdown-item" active-class="route-active">
                   <span class="item-icon">🔍</span>
                   <div class="item-text"><span class="title">全网商品搜索</span><span class="desc">搜索海量商品信息</span></div>
                 </router-link>
@@ -35,26 +35,31 @@
           </div>
           
           <!-- 🚨 热搜入口：加上 hide-on-mobile 类，手机端隐藏 -->
-          <router-link to="/trends" class="nav-item hide-on-mobile">全网热搜</router-link>
+          <router-link to="/trends" class="nav-item hide-on-mobile" active-class="route-active">全网热搜</router-link>
           
-          <router-link to="/navigator" class="nav-item">宝藏导航</router-link>
-          <router-link to="/ranking" class="nav-item">分数转换</router-link>
+          <router-link v-if="userStore.isVip" to="/navigator" class="nav-item" active-class="route-active">宝藏导航</router-link>
+          <router-link to="/ranking" class="nav-item" active-class="route-active">分数转换</router-link>
+          <router-link to="/character" class="nav-item" active-class="route-active">繁体解字</router-link>
           
           <!-- 下拉菜单：效率工具 -->
           <div class="nav-dropdown" @click.stop="toggleDropdown('tools')">
-            <div class="nav-item" :class="{ active: activeDropdown === 'tools' }">
+            <div class="nav-item" :class="{ active: activeDropdown === 'tools', 'route-active': isToolsRouteActive }">
               效率工具 
               <svg class="chevron" :class="{ rotate: activeDropdown === 'tools' }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <transition name="spring-dropdown">
               <div class="dropdown-panel liquid-glass" v-if="activeDropdown === 'tools'">
-                <router-link to="/plans" class="dropdown-item">
+                <router-link to="/plans" class="dropdown-item" active-class="route-active">
                   <span class="item-icon">📅</span>
                   <div class="item-text"><span class="title">我的计划表</span><span class="desc">管理每日待办与目标</span></div>
                 </router-link>
-                <router-link to="/notes" class="dropdown-item">
+                <router-link to="/notes" class="dropdown-item" active-class="route-active">
                   <span class="item-icon">📝</span>
                   <div class="item-text"><span class="title">随心笔记</span><span class="desc">记录灵感与知识</span></div>
+                </router-link>
+                <router-link to="/knowledge" class="dropdown-item" active-class="route-active">
+                  <span class="item-icon">🧠</span>
+                  <div class="item-text"><span class="title">知识向量库</span><span class="desc">存资料、分块并检索原文</span></div>
                 </router-link>
               </div>
             </transition>
@@ -108,13 +113,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import CalendarView from '@/views/CalendarView.vue'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+const isToolsRouteActive = computed(() => ['/plans', '/notes', '/knowledge'].includes(route.path))
+const isRouteActive = (path) => route.path === path || route.path.startsWith(`${path}/`)
 
 const activeDropdown = ref(null)
 const showUserMenu = ref(false)
@@ -177,6 +185,10 @@ const logout = () => { closeMenus(); userStore.logout(); router.push('/login') }
   transition: all 0.2s ease; white-space: nowrap;
 }
 .nav-item:hover, .nav-item.active { color: var(--text-main); background: rgba(0, 0, 0, 0.04); }
+.nav-item.route-active { color: #8f1d24; background: linear-gradient(135deg, rgba(193, 39, 45, .12), rgba(212, 175, 55, .12)); box-shadow: inset 0 -2px 0 #c1272d; }
+.nav-dropdown > .nav-item.route-active { border-radius: var(--radius-lg); }
+.dropdown-item.route-active { background: rgba(193, 39, 45, .08); }
+.dropdown-item.route-active .item-icon, .dropdown-item.route-active .item-text .title { color: #9b2028; }
 
 .chevron { transition: transform 0.3s var(--spring-ease); color: var(--text-muted); }
 .chevron.rotate { transform: rotate(180deg); color: var(--text-main); }

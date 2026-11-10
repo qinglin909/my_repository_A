@@ -48,10 +48,10 @@
           <div class="menu-left"><span class="icon">🎁</span><span class="text">我的福利</span></div>
           <span class="arrow">></span>
         </div>
-        <div class="menu-item">
-          <div class="menu-left"><span class="icon">⚙️</span><span class="text">账号设置</span></div>
-          <span class="arrow">></span>
-        </div>
+        <button type="button" class="menu-item settings-menu-item" @click="openPasswordModal">
+          <span class="menu-left"><span class="icon">⚙️</span><span class="text">账号设置 · 修改密码</span></span>
+          <span class="arrow">›</span>
+        </button>
         <div class="menu-item danger-item" @click="logout">
           <div class="menu-left"><span class="icon">🚪</span><span class="text">退出登录</span></div>
           <span class="arrow">></span>
@@ -59,12 +59,35 @@
       </div>
     </div>
 
+    <div v-if="showPasswordModal" class="settings-overlay" @click.self="closePasswordModal">
+      <section class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="password-modal-title">
+        <button class="settings-close" type="button" aria-label="关闭" @click="closePasswordModal">×</button>
+        <span class="settings-kicker">账号安全</span>
+        <h2 id="password-modal-title">修改登录密码</h2>
+        <p class="settings-description">验证当前密码后更新密码；更新成功后需要重新登录。</p>
+        <form @submit.prevent="changePassword">
+          <label for="current-password">当前密码</label>
+          <input id="current-password" v-model="passwordForm.currentPassword" type="password" autocomplete="current-password" required />
+          <label for="new-password">新密码</label>
+          <input id="new-password" v-model="passwordForm.newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required />
+          <label for="confirm-password">确认新密码</label>
+          <input id="confirm-password" v-model="passwordForm.confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required />
+          <p v-if="passwordError" class="password-error" role="alert">{{ passwordError }}</p>
+          <p v-if="passwordMessage" class="password-success" role="status">{{ passwordMessage }}</p>
+          <div class="settings-actions">
+            <button class="settings-cancel" type="button" @click="closePasswordModal">取消</button>
+            <button class="settings-save" type="submit" :disabled="passwordLoading">{{ passwordLoading ? '提交中…' : '确认修改' }}</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
     <ImageUploader ref="uploaderRef" @success="handleUploadSuccess" />
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import ImageUploader from '@/components/ImageUploader.vue'
@@ -72,6 +95,61 @@ import ImageUploader from '@/components/ImageUploader.vue'
 const router = useRouter()
 const userStore = useUserStore()
 const uploaderRef = ref(null)
+const showPasswordModal = ref(false)
+const passwordLoading = ref(false)
+const passwordError = ref('')
+const passwordMessage = ref('')
+const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+const openPasswordModal = () => {
+  passwordError.value = ''
+  passwordMessage.value = ''
+  showPasswordModal.value = true
+}
+const closePasswordModal = () => {
+  showPasswordModal.value = false
+  passwordForm.currentPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  passwordError.value = ''
+}
+const changePassword = async () => {
+  passwordError.value = ''
+  passwordMessage.value = ''
+  if (passwordForm.newPassword.length < 8) {
+    passwordError.value = '新密码至少需要 8 个字符。'
+    return
+  }
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    passwordError.value = '两次输入的新密码不一致。'
+    return
+  }
+  passwordLoading.value = true
+  try {
+    const token = userStore.token || localStorage.getItem('userToken')
+    const response = await fetch('/api/account/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+      body: JSON.stringify({ currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword })
+    })
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('text/html')) throw new Error('API 返回了网页而不是 JSON：线上后端尚未部署改密接口，请先更新 API 服务器。')
+    let result
+    try { result = await response.json() } catch { throw new Error(`服务器返回格式异常 (${response.status})，请检查 API 后端部署。`) }
+    if (!response.ok) throw new Error(result.message || '密码修改失败')
+    passwordMessage.value = result.message || '密码更新成功。'
+    userStore.logout()
+    localStorage.removeItem('userToken')
+    window.setTimeout(() => {
+      closePasswordModal()
+      router.replace('/login')
+    }, 900)
+  } catch (error) {
+    passwordError.value = error.message || '密码修改失败，请稍后重试。'
+  } finally {
+    passwordLoading.value = false
+  }
+}
 
 const handleAvatarClick = () => {
   if (uploaderRef.value) uploaderRef.value.triggerUpload()
@@ -117,7 +195,7 @@ const logout = () => {
 
 /* 菜单 */
 .menu-list { padding: 10px 0; }
-.menu-item { display: flex; justify-content: space-between; align-items: center; padding: 20px 30px; cursor: pointer; transition: all 0.2s; }
+.menu-item { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 20px 30px; border: 0; background: transparent; text-align: left; cursor: pointer; transition: all 0.2s; font: inherit; }
 .menu-item:hover { background: rgba(0, 0, 0, 0.02); }
 .menu-left { display: flex; align-items: center; gap: 16px; }
 .menu-left .icon { font-size: 20px; }
@@ -125,4 +203,21 @@ const logout = () => {
 .arrow { color: #ccc; font-size: 16px; transition: transform 0.2s; }
 .menu-item:hover .arrow { transform: translateX(4px); color: #d4af37; }
 .danger-item .text { color: #ef4444; }
+.settings-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; justify-content: center; align-items: center; padding: 20px; background: rgba(24, 20, 16, .48); backdrop-filter: blur(5px); }
+.settings-modal { position: relative; width: min(440px, 100%); padding: 30px; border: 1px solid #eee3cc; border-radius: 18px; background: #fffdf8; box-shadow: 0 24px 70px rgba(37, 29, 18, .22); }
+.settings-close { position: absolute; top: 12px; right: 15px; border: 0; background: transparent; color: #83796a; font-size: 26px; cursor: pointer; }
+.settings-kicker { color: #a0782b; font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+.settings-modal h2 { margin: 7px 0; color: #2b261f; font-size: 22px; }
+.settings-description { margin: 0 0 20px; color: #766e62; font-size: 13px; line-height: 1.65; }
+.settings-modal label { display: block; margin: 13px 0 6px; color: #4e473d; font-size: 12px; font-weight: 700; }
+.settings-modal input { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #ded7ca; border-radius: 8px; background: white; font: inherit; font-size: 14px; }
+.settings-modal input:focus { outline: 3px solid rgba(174, 137, 61, .15); border-color: #aa873f; }
+.password-error, .password-success { margin: 12px 0 0; font-size: 12px; line-height: 1.5; }
+.password-error { color: #b42318; }
+.password-success { color: #027a48; }
+.settings-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; }
+.settings-cancel, .settings-save { padding: 10px 16px; border: 0; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.settings-cancel { background: #f1eee8; color: #514b41; }
+.settings-save { background: #9a7425; color: white; }
+.settings-save:disabled { opacity: .55; cursor: wait; }
 </style>

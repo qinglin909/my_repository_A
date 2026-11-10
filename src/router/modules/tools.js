@@ -3,13 +3,19 @@ export default [
     path: 'navigator', 
     name: 'Navigator', 
     component: () => import('@/views/NavigatorView.vue'),
-    meta: { title: '宝藏导航' }
+    meta: { title: '宝藏导航', requiresVip: true }
   },
   { 
     path: 'notes', 
     name: 'Notes', 
     component: () => import('@/views/NotesView.vue'),
     meta: { title: '随心笔记' }
+  },
+  {
+    path: 'knowledge',
+    name: 'Knowledge',
+    component: () => import('@/views/KnowledgeView.vue'),
+    meta: { title: '知识向量库' }
   },
   // 🚨 已替换：私人媒体库 -> 微信投诉模版
   { 
@@ -18,7 +24,13 @@ export default [
     component: () => import('@/views/RankingView.vue'),
     meta: { title: '成绩定位换算' }
   },   // 👈 这里补上逗号
-  {
+    {
+      path: 'character',
+      name: 'Character',
+      component: () => import('@/views/CharacterView.vue'),
+      meta: { title: '繁体解字' }
+  },
+   {
     path: 'calendar',
     name: 'Calendar',
     component: () => import('@/views/CalendarView.vue'),  // 👈 改成 CalendarView

@@ -144,8 +144,11 @@ const handleSubmit = async () => {
     }
 
     if (data.token) {
-      const userRole = form.username === 'admin' ? 'admin' : 'user'
-      userStore.login(data.token, data.user.username, userRole)
+      const userRole = data.user.role || (form.username === 'admin' ? 'admin' : 'user')
+      userStore.login(data.token, data.user.username, userRole, {
+        vip: data.user.vip,
+        vipExpiresAt: data.user.vipExpiresAt
+      })
       localStorage.setItem('userToken', data.token)
       router.push('/home')
     } else {

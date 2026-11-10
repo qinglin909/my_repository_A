@@ -3,12 +3,59 @@
     {
       "id": 1793864410172,
       "username": "root",
-      "passwordHash": "$2b$10$DRE6S0P0oln1rmkn5pnonO7WTVlwvtagBYnxSTH9lKA6Ho2dHFd5i"
+      "passwordHash": "$2b$10$DRE6S0P0oln1rmkn5pnonO7WTVlwvtagBYnxSTH9lKA6Ho2dHFd5i",
+      "vip": true,
+      "vipExpiresAt": null
     },
     {
       "id": 1793864522004,
       "username": "admin",
       "passwordHash": "$2b$10$.B2P09wriUzsLBTLal9HHubB59hiCrkbuGSqGi89mgrRQL5CEmJ1a"
+    }
+  ],
+  "products": [
+    {
+      "id": "vip-account",
+      "title": "账号 VIP",
+      "tag": "会员",
+      "description": "解锁全部会员功能，按月计费，买得越久单价越低。",
+      "price": 237.6,
+      "plans": [
+        {
+          "id": "2y",
+          "label": "2 年",
+          "months": 24,
+          "unitPrice": 9.9,
+          "totalPrice": 237.6
+        },
+        {
+          "id": "1y",
+          "label": "1 年",
+          "months": 12,
+          "unitPrice": 19.9,
+          "totalPrice": 238.8
+        },
+        {
+          "id": "3m",
+          "label": "3 个月",
+          "months": 3,
+          "unitPrice": 29.9,
+          "totalPrice": 89.7
+        },
+        {
+          "id": "1m",
+          "label": "1 个月",
+          "months": 1,
+          "unitPrice": 39.9,
+          "totalPrice": 39.9
+        },
+        {
+          "id": "1d",
+          "label": "1 日体验",
+          "days": 1,
+          "totalPrice": 3
+        }
+      ]
     }
   ]
 }

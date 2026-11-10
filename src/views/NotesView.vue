@@ -120,13 +120,13 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
-import mermaid from 'mermaid'
+// Mermaid is loaded on demand to keep the initial Notes chunk smaller.
 import mammoth from 'mammoth'
 
 // 🚨 请务必替换为你自己刚申请的智谱 API Key
-const ZHIPU_API_KEY = 'dda7adde5ccc4c88920e0da8cdaa6531.8rdf5mTz54EWU8X5'
+// The AI API key must only exist on the backend.
 
-mermaid.initialize({ startOnLoad: false, theme: 'neutral', flowchart: { curve: 'basis' } })
+
 
 const notes = ref([])
 const currentNoteId = ref(null)
@@ -248,22 +248,13 @@ const generateAI = async () => {
   aiResult.value = { summary: '智谱 AI 正在阅读并分析中...', flowCode: '', sequenceCode: '' }
 
   try {
-		const res = await fetch('/zhipu/api/paas/v4/chat/completions', {
+		const res = await fetch('/api/ai/notes', {
 		  method: 'POST',
 		  headers: {
 			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${ZHIPU_API_KEY}`
+			'Authorization': `Bearer ${localStorage.getItem('userToken') || ''}`
 		  },
-      body: JSON.stringify({
-        model: 'glm-4-flash',
-        messages: [
-          {
-            role: 'system',
-			content: '你是一个专业的文档分析助手。请阅读用户的文章，严格按照以下 JSON 格式返回，不要包含任何额外的话：{"summary": "用一句话总结文章的核心重点", "flowChart": "用 Mermaid 语法的 graph TD 格式画出文章的逻辑流程", "sequenceChart": "用 Mermaid 语法的 sequenceDiagram 格式画出可能存在的交互时序（如果没有交互则画整体流程）"}。注意：Mermaid 代码必须语法绝对规范，每个节点和 end 必须独立换行，不能有多余的中文标点。'          
-			},
-          { role: 'user', content: plainText }
-        ]
-      })
+      body: JSON.stringify({ text: plainText })
     })
 
     if (!res.ok) {
@@ -271,7 +262,8 @@ const generateAI = async () => {
     }
 
     const json = await res.json()
-    const content = json.choices[0].message.content
+    const content = json.choices?.[0]?.message?.content
+    if (typeof content !== 'string') throw new Error('AI response format is invalid')
     
     try {
       const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim()
@@ -306,6 +298,8 @@ const renderMermaid = async () => {
   
   let code = currentChart.value === 'flow' ? aiResult.value.flowCode : aiResult.value.sequenceCode
   try {
+    const { default: mermaid } = await import('mermaid')
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral', flowchart: { curve: 'basis' } })
     const { svg } = await mermaid.render('mermaid-graph-' + Date.now(), code)
     mermaidRef.value.innerHTML = svg
   } catch (error) {

@@ -45,11 +45,25 @@
         <button class="add-secret-btn" @click="openSecretModal()">+ 添加密码</button>
       </div>
       
-      <div class="vault-list">
-        <div v-if="secrets.length === 0" class="empty-vault">
-          暂未保存任何密码，点击右上角添加
+      <div v-if="vaultState !== 'unlocked'" class="vault-lock">
+        <div class="lock-mark">🔒</div>
+        <p v-if="vaultState === 'setup' && hasLegacyVault" class="legacy-warning">检测到旧密码箱记录。首次设置主密码时会尝试迁移并加密；请在原浏览器完成迁移。若迁移失败，原记录会保留。</p>
+        <h3>{{ vaultState === 'setup' ? '设置密码箱主密码' : '密码箱已锁定' }}</h3>
+        <p>{{ vaultState === 'setup' ? '主密码用于加密本机保存的密码数据，忘记后无法恢复。' : '输入主密码解锁；连续输错会短暂锁定。' }}</p>
+        <form class="unlock-form" @submit.prevent="unlockVault">
+          <input v-model="masterPassword" type="password" autocomplete="current-password" :placeholder="vaultState === 'setup' ? '设置至少 8 位主密码' : '输入主密码'" required />
+          <input v-if="vaultState === 'setup'" v-model="confirmMasterPassword" type="password" autocomplete="new-password" placeholder="再次输入主密码" required />
+          <p v-if="vaultError" class="vault-error" role="alert">{{ vaultError }}</p>
+          <button class="btn-save" type="submit" :disabled="vaultBusy || isLockedOut">{{ vaultBusy ? '处理中…' : vaultState === 'setup' ? '设置并解锁' : isLockedOut ? `请稍候 ${lockoutSeconds} 秒` : '解锁密码箱' }}</button>
+        </form>
+      </div>
+
+      <div v-else class="vault-list">
+        <div class="vault-toolbar">
+          <span class="vault-unlocked">🔓 已解锁 · 本机加密</span>
+          <button class="action-btn" type="button" @click="lockVault">立即锁定</button>
         </div>
-        
+        <div v-if="secrets.length === 0" class="empty-vault">暂无密码记录，点击右上角添加</div>
         <div v-for="secret in secrets" :key="secret.id" class="secret-item">
           <div class="secret-info">
             <div class="secret-name">{{ secret.name }}</div>
@@ -65,7 +79,7 @@
     </div>
 
     <!-- 弹窗：新增/编辑密码 -->
-    <div class="modal-overlay" v-if="showModal" @click.self="closeModal">
+    <div class="modal-overlay" v-if="showModal && vaultState === 'unlocked'" @click.self="closeModal">
       <div class="modal-content app-card">
         <h3>{{ isEditing ? '编辑密码' : '添加新密码' }}</h3>
         <div class="form-group">
@@ -90,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 const keyword = ref('')
 
@@ -150,34 +164,175 @@ const secrets = ref([])
 const showModal = ref(false)
 const isEditing = ref(false)
 const formData = ref({ id: null, name: '', account: '', password: '' })
+const vaultState = ref('locked')
+const masterPassword = ref('')
+const confirmMasterPassword = ref('')
+const vaultError = ref('')
+const vaultBusy = ref(false)
+const failedAttempts = ref(0)
+const lockedUntil = ref(0)
+const lockoutSeconds = ref(0)
+const isLockedOut = computed(() => lockoutSeconds.value > 0)
+const VAULT_KEY = 'my_workspace_vault'
+const VAULT_META_KEY = 'my_workspace_vault_meta'
+const hasLegacyVault = ref(false)
+const PBKDF2_ITERATIONS = 310000
+let vaultCryptoKey = null
+let lockoutTimer = null
+let autoLockTimer = null
 
-// 简单的本地数据混淆（防止明文直接暴露在 localStorage）
-const encrypt = (text) => btoa(encodeURIComponent(text))
-const decrypt = (text) => decodeURIComponent(atob(text))
+const bytesToBase64 = (bytes) => {
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(binary)
+}
+const base64ToBytes = (value) => Uint8Array.from(atob(value), char => char.charCodeAt(0))
+const deriveVaultKey = async (password, salt) => {
+  const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey'])
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
+}
+const encryptVaultData = async (data, key) => {
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const plaintext = new TextEncoder().encode(JSON.stringify(data))
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext)
+  return JSON.stringify({ version: 2, iv: bytesToBase64(iv), ciphertext: bytesToBase64(new Uint8Array(ciphertext)) })
+}
+const decryptVaultData = async (serialized, key) => {
+  const envelope = JSON.parse(serialized)
+  if (envelope.version !== 2 || !envelope.iv || !envelope.ciphertext) throw new Error('密码箱数据格式无效')
+  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64ToBytes(envelope.iv) }, key, base64ToBytes(envelope.ciphertext))
+  return JSON.parse(new TextDecoder().decode(plaintext))
+}
+const updateLockoutCountdown = () => {
+  const remaining = Math.max(0, Math.ceil((lockedUntil.value - Date.now()) / 1000))
+  lockoutSeconds.value = remaining
+  if (!remaining) {
+    clearInterval(lockoutTimer)
+    lockoutTimer = null
+  }
+}
 
 onMounted(() => {
-  const saved = localStorage.getItem('my_workspace_vault')
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved)
-      // 解密所有密码
-      secrets.value = parsed.map(item => ({
-        ...item,
-        password: decrypt(item.password)
-      }))
-    } catch (e) {
-      console.error('读取密码本失败')
-    }
-  }
+  vaultState.value = localStorage.getItem(VAULT_META_KEY) ? 'locked' : 'setup'
+  hasLegacyVault.value = vaultState.value === 'setup' && Boolean(localStorage.getItem(VAULT_KEY))
+  if (vaultState.value === 'locked') refreshLockout()
+  window.addEventListener('storage', handleVaultStorage)
+  for (const eventName of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(eventName, registerActivity, { passive: true })
 })
 
-const saveToLocal = () => {
-  // 存储前对密码进行加密
-  const toStore = secrets.value.map(item => ({
-    ...item,
-    password: encrypt(item.password)
-  }))
-  localStorage.setItem('my_workspace_vault', JSON.stringify(toStore))
+onBeforeUnmount(() => {
+  clearTimeout(autoLockTimer)
+  clearInterval(lockoutTimer)
+  window.removeEventListener('storage', handleVaultStorage)
+  for (const eventName of ['pointerdown', 'keydown', 'touchstart']) window.removeEventListener(eventName, registerActivity)
+})
+
+const handleVaultStorage = (event) => {
+  if (event.key === VAULT_KEY || event.key === VAULT_META_KEY) lockVault()
+}
+const refreshLockout = () => {
+  try {
+    lockedUntil.value = Number(sessionStorage.getItem('vault_locked_until') || 0)
+  } catch {
+    lockedUntil.value = 0
+  }
+  updateLockoutCountdown()
+  if (lockoutSeconds.value && !lockoutTimer) lockoutTimer = window.setInterval(updateLockoutCountdown, 1000)
+}
+const registerActivity = () => {
+  clearTimeout(autoLockTimer)
+  if (vaultState.value === 'unlocked') autoLockTimer = window.setTimeout(lockVault, 5 * 60 * 1000)
+}
+const lockVault = () => {
+  clearTimeout(autoLockTimer)
+  autoLockTimer = null
+  vaultCryptoKey = null
+  secrets.value = []
+  showModal.value = false
+  masterPassword.value = ''
+  confirmMasterPassword.value = ''
+  vaultError.value = ''
+  vaultState.value = localStorage.getItem(VAULT_META_KEY) ? 'locked' : 'setup'
+}
+
+const unlockVault = async () => {
+  vaultError.value = ''
+  if (isLockedOut.value) return
+  if (!crypto?.subtle) {
+    vaultError.value = '当前浏览器不支持安全加密，请使用 HTTPS 或 localhost 打开。'
+    return
+  }
+  if (vaultState.value === 'setup' && masterPassword.value.length < 8) {
+    vaultError.value = '主密码至少需要 8 个字符。'
+    return
+  }
+  if (vaultState.value === 'setup' && masterPassword.value !== confirmMasterPassword.value) {
+    vaultError.value = '两次输入的主密码不一致。'
+    return
+  }
+
+  vaultBusy.value = true
+  try {
+    const metaText = localStorage.getItem(VAULT_META_KEY)
+    let salt
+    let key
+    if (!metaText) {
+      salt = crypto.getRandomValues(new Uint8Array(16))
+      key = await deriveVaultKey(masterPassword.value, salt)
+      const legacyText = localStorage.getItem(VAULT_KEY)
+      let legacyRecords = []
+      if (legacyText) {
+        const parsed = JSON.parse(legacyText)
+        if (!Array.isArray(parsed)) throw new Error('检测到旧密码数据格式异常，原数据已保留。')
+        legacyRecords = parsed.map(item => ({ ...item, password: decodeURIComponent(atob(item.password)) }))
+      }
+      const encryptedLegacy = await encryptVaultData(legacyRecords, key)
+      localStorage.setItem(VAULT_META_KEY, JSON.stringify({ version: 2, salt: bytesToBase64(salt), iterations: PBKDF2_ITERATIONS }))
+      localStorage.setItem(VAULT_KEY, encryptedLegacy)
+      hasLegacyVault.value = false
+      secrets.value = legacyRecords
+      vaultCryptoKey = key
+      vaultState.value = 'unlocked'
+      failedAttempts.value = 0
+      registerActivity()
+      return
+    }
+
+    const meta = JSON.parse(metaText)
+    salt = base64ToBytes(meta.salt)
+    key = await deriveVaultKey(masterPassword.value, salt)
+    const serialized = localStorage.getItem(VAULT_KEY)
+    if (!serialized) throw new Error('找不到加密密码箱数据。')
+    const records = await decryptVaultData(serialized, key)
+    if (!Array.isArray(records)) throw new Error('密码箱数据格式无效。')
+    secrets.value = records
+    vaultCryptoKey = key
+    vaultState.value = 'unlocked'
+    failedAttempts.value = 0
+    lockedUntil.value = 0
+    sessionStorage.removeItem('vault_locked_until')
+    registerActivity()
+  } catch (error) {
+    failedAttempts.value += 1
+    if (vaultState.value === 'setup') {
+      vaultError.value = error.message || '旧密码迁移失败；旧数据保持不变，请确认旧密码箱数据未损坏。'
+    } else {
+      vaultError.value = '主密码错误，或密码箱数据无法解密。'
+      if (failedAttempts.value >= 5) {
+        lockedUntil.value = Date.now() + 30_000
+        try { sessionStorage.setItem('vault_locked_until', String(lockedUntil.value)) } catch {}
+        refreshLockout()
+      }
+    }
+  } finally {
+    vaultBusy.value = false
+  }
+}
+
+const saveToLocal = async () => {
+  if (!vaultCryptoKey) throw new Error('密码箱已锁定，请重新解锁。')
+  localStorage.setItem(VAULT_KEY, await encryptVaultData(secrets.value, vaultCryptoKey))
+  registerActivity()
 }
 
 const openSecretModal = (secret = null) => {
@@ -193,27 +348,39 @@ const openSecretModal = (secret = null) => {
 
 const closeModal = () => showModal.value = false
 
-const saveSecret = () => {
-  if (!formData.value.name || !formData.value.password) return
-  
+const saveSecret = async () => {
+  if (!formData.value.name || !formData.value.password || !vaultCryptoKey) return
+
+  const previous = [...secrets.value]
   if (isEditing.value) {
     const index = secrets.value.findIndex(s => s.id === formData.value.id)
     if (index !== -1) secrets.value[index] = { ...formData.value }
   } else {
     secrets.value.unshift({ ...formData.value })
   }
-  saveToLocal()
-  closeModal()
+  try {
+    await saveToLocal()
+    closeModal()
+  } catch {
+    secrets.value = previous
+    alert('加密保存失败，修改未保存。')
+  }
 }
 
-const deleteSecret = (id) => {
-  if (confirm('确定要删除这条密码吗？')) {
-    secrets.value = secrets.value.filter(s => s.id !== id)
-    saveToLocal()
+const deleteSecret = async (id) => {
+  if (!confirm('确定要删除这条密码吗？') || !vaultCryptoKey) return
+  const previous = [...secrets.value]
+  secrets.value = secrets.value.filter(s => s.id !== id)
+  try {
+    await saveToLocal()
+  } catch {
+    secrets.value = previous
+    alert('删除保存失败，记录已恢复。')
   }
 }
 
 const copySecret = async (text) => {
+  registerActivity()
   try {
     await navigator.clipboard.writeText(text)
     alert('密码已复制到剪贴板！')
@@ -259,6 +426,18 @@ const copySecret = async (text) => {
 .add-secret-btn:hover { background: #333; }
 
 .vault-list { display: flex; flex-direction: column; gap: 12px; }
+.vault-lock { max-width: 480px; margin: 0 auto; padding: 32px 20px; text-align: center; }
+.lock-mark { margin-bottom: 10px; font-size: 34px; }
+.vault-lock h3 { margin: 0 0 8px; color: var(--text-main); font-size: 20px; }
+.vault-lock > p { color: var(--text-secondary); font-size: 13px; line-height: 1.7; }
+.vault-lock .unlock-form { margin-top: 18px; text-align: left; }
+.unlock-form input { width: 100%; margin: 6px 0; padding: 12px 14px; border: 1px solid #d8dee8; border-radius: 9px; font-size: 15px; }
+.unlock-form .btn-save { width: 100%; margin-top: 10px; }
+.unlock-form .btn-save:disabled { opacity: .55; cursor: wait; }
+.vault-error { color: #b42318 !important; font-size: 12px !important; }
+.legacy-warning { padding: 10px 12px; border: 1px solid #f3d08a; border-radius: 9px; background: #fffaeb; color: #8a4b08 !important; font-size: 12px !important; }
+.vault-toolbar { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
+.vault-unlocked { color: #027a48; font-size: 12px; font-weight: 700; }
 .empty-vault { color: #999; text-align: center; padding: 40px 0; font-size: 14px; }
 
 .secret-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #f9f9f9; border-radius: 10px; transition: 0.2s; }
