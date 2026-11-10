@@ -61,6 +61,16 @@
             <input v-model.number="topAnchors[subject].targetMaxScore" type="number" min="0" max="750" step="0.5" placeholder="例如 650" />
           </label>
         </div>
+        <p class="anchor-desc" style="margin-top: 16px;"><strong>985 / 211 参考线（可选）</strong>：填往年的院校最低录取分（广东常用 985=华工、211=华师）。换算分达到即标层次，不填则不判断。</p>
+        <div class="anchor-inputs">
+          <label>985 参考线（如华工）
+            <input v-model.number="tierLines[subject].s985" type="number" min="0" max="750" step="0.5" placeholder="填往年录取分" />
+          </label>
+          <label>211 参考线（如华师）
+            <input v-model.number="tierLines[subject].s211" type="number" min="0" max="750" step="0.5" placeholder="填往年录取分" />
+          </label>
+        </div>
+
         <p v-if="topAnchorActive" class="anchor-note">
           最高分线差 {{ fmt(topAnchorDiff) }}，特控线（{{ fmt(currentRule.currTk) }} 分）到最高分（{{ fmt(topAnchors[subject].maxScore) }} 分）之间按这个线差线性过渡。
         </p>
@@ -177,6 +187,10 @@
           <strong>{{ manualProgress }}</strong>
         </div>
         <div>
+          <span>层次</span>
+          <strong class="small">{{ manualTier }}</strong>
+        </div>
+        <div>
           <span>全省排位参考</span>
           <strong>{{ manualRank }}</strong>
         </div>
@@ -234,6 +248,7 @@
                 <th>线差</th>
                 <th>进度</th>
                 <th>所在区间</th>
+                <th>层次</th>
                 <th>全省排位参考</th>
                 <th v-if="showExplain">计算过程</th>
               </tr>
@@ -250,6 +265,7 @@
                 <td>{{ item.diffText }}</td>
                 <td>{{ item.progressText }}</td>
                 <td>{{ item.segmentLabel }}</td>
+                <td :class="['tier', item.tierLabel === '985' ? 'tier-985' : item.tierLabel === '211' ? 'tier-211' : '']">{{ item.tierLabel }}</td>
                 <td>{{ item.rank }}</td>
                 <td v-if="showExplain" class="explain-cell">{{ item.explain }}</td>
               </tr>
@@ -268,6 +284,7 @@
         <li>特控线以上沿用特控线线差；设置了「高分段校准」时，在特控线与本次最高分之间线性过渡。</li>
         <li>特控线与本科线之间、本科线与专科线之间，线差按分数位置线性过渡，每分分差 = 线差之差 ÷ 分差。</li>
         <li>专科线以下不做换算，保持原始分。</li>
+        <li>可选 985/211 参考线：换算分（取整）达到该线即标为 985/211；不填则不判断，只显示所在线。</li>
         <li>换算分 = 原始分 + 该位置的线差，四舍五入取整；<strong>查一分一段表用的就是这个取整后的分数</strong>，精确值只作参考。</li>
       </ol>
       <p class="empty-hint">锚点校验：学校本科线换算后等于省控本科线，学校特控线换算后等于省控特控线。</p>
@@ -305,6 +322,10 @@ const rules = reactive({
 const topAnchors = reactive({
   physics: { maxScore: '', targetMaxScore: '' },
   history: { maxScore: '', targetMaxScore: '' }
+})
+const tierLines = reactive({
+  physics: { s985: '', s211: '' },
+  history: { s985: '', s211: '' }
 })
 
 const manualScore = ref('')
@@ -419,6 +440,22 @@ const filteredStudents = computed(() => {
   )
 })
 
+const classifyTier = (rounded, subjectKey) => {
+  const lines = tierLines[subjectKey] || {}
+  const s985 = Number(lines.s985)
+  const s211 = Number(lines.s211)
+  const score = Number(rounded)
+  if (!Number.isFinite(score)) return '—'
+  if (Number.isFinite(s985) && lines.s985 !== '' && score >= s985) return '985'
+  if (Number.isFinite(s211) && lines.s211 !== '' && score >= s211) return '211'
+  return null
+}
+
+const manualTier = computed(() => {
+  if (!manualResult.value) return ''
+  return classifyTier(manualResult.value.rounded, subject.value) || SEGMENT_LABELS[manualResult.value.segment]
+})
+
 const fmt = (value) => {
   const number = Number(value)
   if (!Number.isFinite(number)) return '—'
@@ -471,6 +508,9 @@ const buildRows = (source) => {
         ? Number(result.progress).toFixed(4)
         : '—',
       segmentLabel: result ? SEGMENT_LABELS[result.segment] : '分数异常',
+      tierLabel: result
+        ? (classifyTier(result.rounded, resolved) || SEGMENT_LABELS[result.segment])
+        : '分数异常',
       rank: result ? lookupRank(result.rounded, table) : '—',
       rankCovered: result && table.length ? result.rounded >= Number(table[table.length - 1].score) : false,
       explain: result ? describeConversion(result, rule, topAnchorOptions(resolved)) : '分数异常，无法换算'
@@ -566,6 +606,7 @@ const exportExcel = () => {
       线差: item.diffText,
       进度: item.progressText,
       所在区间: item.segmentLabel,
+      层次: item.tierLabel,
       全省排位参考: item.rank,
       计算过程: item.explain
     })
@@ -647,14 +688,19 @@ onMounted(() => {
         if (saved.topAnchors[key]) topAnchors[key] = { ...topAnchors[key], ...saved.topAnchors[key] }
       }
     }
+    if (saved?.tierLines) {
+      for (const key of SUBJECTS) {
+        if (saved.tierLines[key]) tierLines[key] = { ...tierLines[key], ...saved.tierLines[key] }
+      }
+    }
   } catch {
     localStorage.removeItem(STORAGE_KEY)
   }
 })
 
-watch([rules, topAnchors], () => {
+watch([rules, topAnchors, tierLines], () => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ rules, topAnchors }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ rules, topAnchors, tierLines }))
   } catch {
     // 本地存储不可用时保持当前会话可用
   }
@@ -733,6 +779,8 @@ td { color: #344054; }
 .table-tools span { color: #667085; font-size: 13px; }
 .toggle { display: inline-flex; align-items: center; gap: 6px; color: #475467; font-size: 13px; cursor: pointer; }
 .explain { margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; background: #f5f9ff; color: #334155; font-size: 13px; line-height: 1.8; }
+.tier-985 { color: #b42318; font-weight: 800; }
+.tier-211 { color: #b45309; font-weight: 800; }
 .source-badge { padding: 6px 12px; border-radius: 999px; background: #fff7ed; color: #b45309; font-size: 12px; font-weight: 700; }
 .source-badge.custom { background: #ecfdf3; color: #027a48; }
 .rank-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
