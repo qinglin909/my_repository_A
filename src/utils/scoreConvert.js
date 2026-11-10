@@ -97,25 +97,28 @@ export const convertScore = (score, rawRule, options = {}) => {
 
   let diff
   let segment
+  let progress = null
+  let topAdjusted = false
 
   if (value >= rule.currTk) {
     const baseDiff = diffs.tk
     if (hasTopAnchor) {
       const topDiff = targetMaxScore - maxScore
-      const progress = Math.min(1, Math.max(0, (value - rule.currTk) / (maxScore - rule.currTk)))
+      progress = Math.min(1, Math.max(0, (value - rule.currTk) / (maxScore - rule.currTk)))
       diff = baseDiff + (topDiff - baseDiff) * progress
+      topAdjusted = true
     } else {
       diff = baseDiff
     }
     segment = 'tk'
   } else if (value >= rule.currBk) {
     const span = rule.currTk - rule.currBk
-    const progress = span === 0 ? 0 : (value - rule.currBk) / span
+    progress = span === 0 ? 0 : (value - rule.currBk) / span
     diff = diffs.bk + (diffs.tk - diffs.bk) * progress
     segment = 'tk-bk'
   } else if (value >= rule.currZk) {
     const span = rule.currBk - rule.currZk
-    const progress = span === 0 ? 0 : (value - rule.currZk) / span
+    progress = span === 0 ? 0 : (value - rule.currZk) / span
     diff = diffs.zk + (diffs.bk - diffs.zk) * progress
     segment = 'bk-zk'
   } else {
@@ -130,8 +133,65 @@ export const convertScore = (score, rawRule, options = {}) => {
     converted,
     rounded: Math.round(converted),
     diff,
-    segment
+    segment,
+    progress,
+    topAdjusted
   }
+}
+
+const signed = (value) => {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return '—'
+  const text = Number.isInteger(number) ? String(number) : number.toFixed(2)
+  return number >= 0 ? `+${text}` : text
+}
+
+const op = (value) => {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return '—'
+  const text = Number.isInteger(number) ? String(number) : Math.abs(number).toFixed(2)
+  return number >= 0 ? `+ ${text}` : `− ${text}`
+}
+
+const RULE_KEYS = { tk: 'Tk', bk: 'Bk', zk: 'Zk' }
+
+/**
+ * 生成「这个换算分是怎么来的」的可读推导，页面与 Excel 共用。
+ */
+export const describeConversion = (result, rawRule, options = {}) => {
+  if (!result) return '—'
+  const rule = normalizeRule(rawRule)
+  const diffs = ruleDiffs(rule)
+  const ending = `= ${result.converted.toFixed(2)} → ${result.rounded} 分`
+
+  if (result.segment === 'below-zk') {
+    return `原始分 ${result.score} 低于专科线 ${rule.currZk}，按口径不做换算，保持 ${result.rounded} 分。`
+  }
+
+  if (result.segment === 'tk') {
+    if (result.topAdjusted) {
+      const maxScore = Number(options.maxScore)
+      const topDiff = Number(options.targetMaxScore) - maxScore
+      return `原始分 ${result.score} 在特控线 ${rule.currTk} 以上；已启用最高分校准：本次最高分 ${maxScore} → 往年 ${options.targetMaxScore}，最高分线差 ${signed(topDiff)}，` +
+        `与特控线线差 ${signed(diffs.tk)} 之间按位置过渡 ${Number(result.progress).toFixed(4)}，本次线差 ${signed(result.diff)}；` +
+        `换算分 = ${result.score} ${op(result.diff)} ${ending}。`
+    }
+    return `原始分 ${result.score} 在特控线 ${rule.currTk} 以上，统一使用特控线线差 ${signed(diffs.tk)}（${rule.lastTk} − ${rule.currTk}）；` +
+      `换算分 = ${result.score} ${op(diffs.tk)} ${ending}。`
+  }
+
+  const upperKey = result.segment === 'tk-bk' ? 'tk' : 'bk'
+  const lowerKey = result.segment === 'tk-bk' ? 'bk' : 'zk'
+  const upperScore = rule[`curr${RULE_KEYS[upperKey]}`]
+  const lowerScore = rule[`curr${RULE_KEYS[lowerKey]}`]
+  const upperDiff = diffs[upperKey]
+  const lowerDiff = diffs[lowerKey]
+  const progress = Number(result.progress || 0).toFixed(4)
+
+  return `原始分 ${result.score} 在${LINE_LABELS[lowerKey]} ${lowerScore} 与${LINE_LABELS[upperKey]} ${upperScore} 之间：` +
+    `进度 = (${result.score} − ${lowerScore}) ÷ (${upperScore} − ${lowerScore}) = ${progress}；` +
+    `线差 = ${LINE_LABELS[lowerKey]}线差 ${signed(lowerDiff)} + ${progress} × (${LINE_LABELS[upperKey]}线差 ${signed(upperDiff)} − ${LINE_LABELS[lowerKey]}线差 ${signed(lowerDiff)}) = ${signed(result.diff)}；` +
+    `换算分 = ${result.score} ${op(result.diff)} ${ending}。`
 }
 
 export const SEGMENT_LABELS = {
@@ -144,8 +204,7 @@ export const SEGMENT_LABELS = {
 // 查一分一段表得到全省排位
 export const lookupRank = (convertedScore, table) => {
   if (!Array.isArray(table) || table.length === 0) return '—'
-  const result = findRankValue(convertedScore, table)
-  return result
+  return findRankValue(convertedScore, table)
 }
 
 const findRankValue = (score, table) => {

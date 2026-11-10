@@ -132,6 +132,8 @@
           <strong>{{ manualRank }}</strong>
         </div>
       </div>
+
+      <p v-if="manualExplain" class="explain"><strong>计算过程：</strong>{{ manualExplain }}</p>
       <p v-else class="empty-hint">输入 0–750 之间的分数后自动计算。</p>
     </section>
 
@@ -161,6 +163,7 @@
         <div class="table-tools">
           <input v-model="keyword" type="search" placeholder="搜索姓名或班级" aria-label="搜索结果" />
           <span>共 {{ students.length }} 人，显示 {{ filteredStudents.length }} 人</span>
+          <label class="toggle"><input v-model="showExplain" type="checkbox" /> 显示计算过程</label>
           <button type="button" class="export-btn" @click="exportExcel">导出 Excel</button>
         </div>
         <div class="table-wrap">
@@ -176,6 +179,7 @@
                 <th>线差</th>
                 <th>所在区间</th>
                 <th>全省排位参考</th>
+                <th v-if="showExplain">计算过程</th>
               </tr>
             </thead>
             <tbody>
@@ -189,6 +193,7 @@
                 <td>{{ item.diffText }}</td>
                 <td>{{ item.segmentLabel }}</td>
                 <td>{{ item.rank }}</td>
+                <td v-if="showExplain" class="explain-cell">{{ item.explain }}</td>
               </tr>
             </tbody>
           </table>
@@ -224,6 +229,7 @@ import {
   SUBJECT_LABELS,
   conversionPairs,
   convertScore,
+  describeConversion,
   lookupRank,
   normalizeRule,
   ruleDiffs,
@@ -251,6 +257,7 @@ const uploading = ref(false)
 const errorMessage = ref('')
 const fallbackSubject = ref('physics')
 const unresolvedCount = ref(0)
+const showExplain = ref(false)
 
 const lineFields = [
   { key: 'tk', curr: 'currTk', last: 'lastTk' },
@@ -296,6 +303,12 @@ const manualResult = computed(() => {
   if (manualScore.value === '' || manualScore.value === null) return null
   return convertScore(manualScore.value, currentRule.value, topAnchorOptions(subject.value))
 })
+
+const manualExplain = computed(() =>
+  manualResult.value
+    ? describeConversion(manualResult.value, currentRule.value, topAnchorOptions(subject.value))
+    : ''
+)
 
 const rankTable = computed(() => (subject.value === 'physics' ? BUILT_IN_GD_2026.physics : BUILT_IN_GD_2026.history))
 const manualRank = computed(() => (manualResult.value ? lookupRank(manualResult.value.rounded, rankTable.value) : '—'))
@@ -356,7 +369,8 @@ const buildRows = (source) => {
       convertedScore: result ? fmt(result.converted) : '—',
       diffText: result ? fmt(result.diff) : '—',
       segmentLabel: result ? SEGMENT_LABELS[result.segment] : '分数异常',
-      rank: result ? lookupRank(result.rounded, table) : '—'
+      rank: result ? lookupRank(result.rounded, table) : '—',
+      explain: result ? describeConversion(result, rule, topAnchorOptions(resolved)) : '分数异常，无法换算'
     }
   })
   unresolvedCount.value = unresolved
@@ -404,7 +418,8 @@ const exportExcel = () => {
       换算分: item.convertedScore,
       线差: item.diffText,
       所在区间: item.segmentLabel,
-      全省排位参考: item.rank
+      全省排位参考: item.rank,
+      计算过程: item.explain
     })
     const schoolName = '换算结果'
     const safeSheetName = (name, fallback) => {
@@ -413,6 +428,30 @@ const exportExcel = () => {
     }
 
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(students.value.map(toRow)), safeSheetName(schoolName, '汇总'))
+
+    // 换算依据：把公式与每条线、每段的分差写进一张表，成绩单交给别人也解释得清
+    const basis = [
+      { 科类: '通用', 项目: '换算公式', 说明: '换算分 = ROUNDDOWN(原始分) + 该分数的线差，再四舍五入取整' },
+      { 科类: '通用', 项目: '线差定义', 说明: '线差 = 省控线 − 学校预估线；分数越高线差越接近特控线线差' },
+      { 科类: '通用', 项目: '每分分差', 说明: '每分分差 = 相邻两条线的线差之差 ÷ 两条线的学校预估线之差' }
+    ]
+    for (const key of SUBJECTS) {
+      const rule = rules[key]
+      const subjectDiffs = ruleDiffs(rule)
+      basis.push({ 科类: SUBJECT_LABELS[key], 项目: '特控线', 学校预估线: rule.currTk, 省控线: rule.lastTk, 线差: Number(subjectDiffs.tk.toFixed(2)) })
+      basis.push({ 科类: SUBJECT_LABELS[key], 项目: '本科线', 学校预估线: rule.currBk, 省控线: rule.lastBk, 线差: Number(subjectDiffs.bk.toFixed(2)) })
+      basis.push({ 科类: SUBJECT_LABELS[key], 项目: '专科线', 学校预估线: rule.currZk, 省控线: rule.lastZk, 线差: Number(subjectDiffs.zk.toFixed(2)) })
+      for (const pair of conversionPairs(rule)) {
+        basis.push({
+          科类: SUBJECT_LABELS[key],
+          项目: pair.label,
+          分差: pair.scoreGap,
+          线差之差: Number(pair.diffGap.toFixed(2)),
+          每分分差: pair.perPoint === null ? '' : Number(pair.perPoint.toFixed(6))
+        })
+      }
+    }
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(basis), '换算依据')
 
     // 按班级分 sheet 导出分数条
     const byClass = new Map()
@@ -530,6 +569,9 @@ td { color: #344054; }
 .table-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0 10px; }
 .table-tools input { flex: 1; min-width: 180px; padding: 10px 12px; border: 1px solid #dfe4ee; border-radius: 10px; font-size: 14px; }
 .table-tools span { color: #667085; font-size: 13px; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; color: #475467; font-size: 13px; cursor: pointer; }
+.explain { margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; background: #f5f9ff; color: #334155; font-size: 13px; line-height: 1.8; }
+.explain-cell { min-width: 320px; max-width: 520px; white-space: normal; color: #475467; font-size: 12px; line-height: 1.7; }
 .export-btn { padding: 10px 16px; border: 0; border-radius: 10px; background: #2563eb; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .export-btn:hover { background: #1d4ed8; }
 .highlight { color: #2563eb; font-weight: 800; }
