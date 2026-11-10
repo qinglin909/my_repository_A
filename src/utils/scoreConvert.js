@@ -195,9 +195,9 @@ export const describeConversion = (result, rawRule, options = {}) => {
 }
 
 export const SEGMENT_LABELS = {
-  tk: '特控线以上',
-  'tk-bk': '特控线与本科线之间',
-  'bk-zk': '本科线与专科线之间',
+  tk: '特控线',
+  'tk-bk': '本科线',
+  'bk-zk': '专科线',
   'below-zk': '专科线以下'
 }
 
