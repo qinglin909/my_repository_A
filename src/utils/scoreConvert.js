@@ -74,21 +74,39 @@ export const conversionPairs = (rawRule) => {
 }
 
 /**
- * 把原始分换算成参考分。
+ * 把原始分换算成参考分（按交接文档的口径）。
+ * - 原始分先向下取整（ROUNDDOWN），再取该分数的分差
+ * - 特控线以上：特控线线差；若设置了「最高分校准」，在特控线与本次最高分之间线性过渡
+ * - 两条线之间：线差线性过渡
+ * - 专科线以下：不做换算（保持原始分）
  * @returns {{score:number, converted:number, rounded:number, diff:number, segment:string}|null}
  */
-export const convertScore = (score, rawRule) => {
+export const convertScore = (score, rawRule, options = {}) => {
   const rule = normalizeRule(rawRule)
   if (!ruleLooksValid(rule)) return null
-  const value = Number(score)
-  if (!Number.isFinite(value)) return null
+  const raw = Number(score)
+  if (!Number.isFinite(raw)) return null
 
+  const value = Math.floor(raw)
   const diffs = ruleDiffs(rule)
+  const maxScore = Number(options.maxScore)
+  const targetMaxScore = Number(options.targetMaxScore)
+  const hasTopAnchor =
+    Number.isFinite(maxScore) && Number.isFinite(targetMaxScore) &&
+    maxScore > rule.currTk && targetMaxScore > 0 && targetMaxScore <= 750
+
   let diff
   let segment
 
   if (value >= rule.currTk) {
-    diff = diffs.tk
+    const baseDiff = diffs.tk
+    if (hasTopAnchor) {
+      const topDiff = targetMaxScore - maxScore
+      const progress = Math.min(1, Math.max(0, (value - rule.currTk) / (maxScore - rule.currTk)))
+      diff = baseDiff + (topDiff - baseDiff) * progress
+    } else {
+      diff = baseDiff
+    }
     segment = 'tk'
   } else if (value >= rule.currBk) {
     const span = rule.currTk - rule.currBk
@@ -101,7 +119,8 @@ export const convertScore = (score, rawRule) => {
     diff = diffs.zk + (diffs.bk - diffs.zk) * progress
     segment = 'bk-zk'
   } else {
-    diff = diffs.zk
+    // 文档口径：专科线以下不做换算
+    diff = 0
     segment = 'below-zk'
   }
 

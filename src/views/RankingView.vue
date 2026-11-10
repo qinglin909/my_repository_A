@@ -46,6 +46,25 @@
         <button type="button" class="ghost" @click="resetRule">恢复默认（广东 2026）</button>
         <span class="saved-hint">改动会自动保存在本机</span>
       </div>
+
+      <div class="anchor-box">
+        <div class="anchor-head">
+          <strong>高分段校准（可选）</strong>
+          <span>不填则特控线以上统一使用特控线线差</span>
+        </div>
+        <p class="anchor-desc">按交接文档：如果特控线以上的换算整体偏高或偏低，可用「本次最高分 → 往年同一位次分数」再校准一次。</p>
+        <div class="anchor-inputs">
+          <label>本次考试最高分
+            <input v-model.number="topAnchors[subject].maxScore" type="number" min="0" max="750" step="0.5" placeholder="例如 640" />
+          </label>
+          <label>往年同一位次对应分数
+            <input v-model.number="topAnchors[subject].targetMaxScore" type="number" min="0" max="750" step="0.5" placeholder="例如 650" />
+          </label>
+        </div>
+        <p v-if="topAnchorActive" class="anchor-note">
+          最高分线差 {{ fmt(topAnchorDiff) }}，特控线（{{ fmt(currentRule.currTk) }} 分）到最高分（{{ fmt(topAnchors[subject].maxScore) }} 分）之间按这个线差线性过渡。
+        </p>
+      </div>
     </section>
 
     <section class="card">
@@ -173,9 +192,11 @@
       <h2>换算方法</h2>
       <ol>
         <li>计算三条线的线差：<code>省控线 − 学校预估线</code>。</li>
-        <li>特控线以上沿用特控线差；专科线以下沿用专科线差。</li>
-        <li>特控线与本科线之间、本科线与专科线之间，线差按分数位置线性过渡。</li>
-        <li>换算分 = 原始分 + 该位置的线差，再用一分一段表查全省排位参考。</li>
+        <li>原始分先向下取整（ROUNDDOWN），再取该分数的分差。</li>
+        <li>特控线以上沿用特控线线差；设置了「高分段校准」时，在特控线与本次最高分之间线性过渡。</li>
+        <li>特控线与本科线之间、本科线与专科线之间，线差按分数位置线性过渡，每分分差 = 线差之差 ÷ 分差。</li>
+        <li>专科线以下不做换算，保持原始分。</li>
+        <li>换算分 = 原始分 + 该位置的线差，四舍五入取整后，再用一分一段表查全省排位参考。</li>
       </ol>
       <p class="empty-hint">锚点校验：学校本科线换算后等于省控本科线，学校特控线换算后等于省控特控线。</p>
     </section>
@@ -208,6 +229,10 @@ const rules = reactive({
   physics: normalizeRule(defaults.physics),
   history: normalizeRule(defaults.history)
 })
+const topAnchors = reactive({
+  physics: { maxScore: '', targetMaxScore: '' },
+  history: { maxScore: '', targetMaxScore: '' }
+})
 
 const manualScore = ref('')
 const students = ref([])
@@ -226,6 +251,23 @@ const validRule = computed(() => ruleLooksValid(currentRule.value))
 const diffs = computed(() => ruleDiffs(currentRule.value))
 const pairs = computed(() => conversionPairs(currentRule.value))
 
+const topAnchorOptions = (subjectKey) => ({
+  maxScore: topAnchors[subjectKey].maxScore,
+  targetMaxScore: topAnchors[subjectKey].targetMaxScore
+})
+
+const topAnchorActive = computed(() => {
+  const anchor = topAnchors[subject.value]
+  const maxScore = Number(anchor.maxScore)
+  const target = Number(anchor.targetMaxScore)
+  return Number.isFinite(maxScore) && Number.isFinite(target) &&
+    maxScore > currentRule.value.currTk && target > 0 && target <= 750
+})
+
+const topAnchorDiff = computed(() =>
+  Number(topAnchors[subject.value].targetMaxScore) - Number(topAnchors[subject.value].maxScore)
+)
+
 const basisRows = computed(() => {
   const diff = diffs.value
   return lineFields.map((line) => ({
@@ -240,7 +282,7 @@ const basisRows = computed(() => {
 
 const manualResult = computed(() => {
   if (manualScore.value === '' || manualScore.value === null) return null
-  return convertScore(manualScore.value, currentRule.value)
+  return convertScore(manualScore.value, currentRule.value, topAnchorOptions(subject.value))
 })
 
 const rankTable = computed(() => (subject.value === 'physics' ? BUILT_IN_GD_2026.physics : BUILT_IN_GD_2026.history))
@@ -291,7 +333,7 @@ const handleUpload = async (event) => {
     students.value = all.map((student) => {
       const resolved = resolveSubject(student, subject.value)
       const rule = rules[resolved]
-      const result = convertScore(student.originalScore, rule)
+      const result = convertScore(student.originalScore, rule, topAnchorOptions(resolved))
       const table = resolved === 'physics' ? BUILT_IN_GD_2026.physics : BUILT_IN_GD_2026.history
       return {
         ...student,
@@ -315,7 +357,7 @@ const exportExcel = () => {
   if (!students.value.length) return
   try {
     const workbook = XLSX.utils.book_new()
-    const rows = students.value.map((item) => ({
+    const toRow = (item) => ({
       校排: item.schoolRank || '',
       姓名: item.name,
       班级: item.className || '',
@@ -325,8 +367,30 @@ const exportExcel = () => {
       线差: item.diffText,
       所在区间: item.segmentLabel,
       全省排位参考: item.rank
-    }))
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), '换算结果')
+    })
+    const schoolName = '换算结果'
+    const safeSheetName = (name, fallback) => {
+      const cleaned = String(name || fallback).replace(/[\\/:*?"<>\[\]]/g, '').trim().slice(0, 28)
+      return cleaned || fallback
+    }
+
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(students.value.map(toRow)), safeSheetName(schoolName, '汇总'))
+
+    // 按班级分 sheet 导出分数条
+    const byClass = new Map()
+    for (const item of students.value) {
+      const key = item.className || '未分班'
+      if (!byClass.has(key)) byClass.set(key, [])
+      byClass.get(key).push(item)
+    }
+    if (byClass.size > 1) {
+      let index = 1
+      for (const [className, items] of byClass) {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(items.map(toRow)), safeSheetName(className, `班级${index}`))
+        index += 1
+      }
+    }
+
     XLSX.writeFile(workbook, `成绩换算_${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (error) {
     errorMessage.value = `导出失败：${error.message}`
@@ -336,16 +400,22 @@ const exportExcel = () => {
 onMounted(() => {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
-    if (saved?.physics) rules.physics = normalizeRule(saved.physics)
-    if (saved?.history) rules.history = normalizeRule(saved.history)
+    const savedRules = saved?.rules || saved
+    if (savedRules?.physics) rules.physics = normalizeRule(savedRules.physics)
+    if (savedRules?.history) rules.history = normalizeRule(savedRules.history)
+    if (saved?.topAnchors) {
+      for (const key of SUBJECTS) {
+        if (saved.topAnchors[key]) topAnchors[key] = { ...topAnchors[key], ...saved.topAnchors[key] }
+      }
+    }
   } catch {
     localStorage.removeItem(STORAGE_KEY)
   }
 })
 
-watch(rules, (value) => {
+watch([rules, topAnchors], () => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ rules, topAnchors }))
   } catch {
     // 本地存储不可用时保持当前会话可用
   }
@@ -383,6 +453,16 @@ fieldset input:focus { border-color: #2563eb; outline: 2px solid #2563eb22; }
 .ghost { padding: 9px 16px; border: 1px solid #dfe4ee; border-radius: 10px; background: #fff; color: #344054; font-size: 13px; font-weight: 600; cursor: pointer; }
 .ghost:hover { border-color: #2563eb; color: #2563eb; }
 .saved-hint { color: #98a2b3; font-size: 12px; }
+.anchor-box { margin-top: 16px; padding: 16px; border: 1px dashed #dfe4ee; border-radius: 14px; background: #fbfcfe; }
+.anchor-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.anchor-head strong { color: #344054; font-size: 14px; }
+.anchor-head span { color: #98a2b3; font-size: 12px; }
+.anchor-desc { margin: 6px 0 12px; color: #667085; font-size: 12px; line-height: 1.7; }
+.anchor-inputs { display: flex; flex-wrap: wrap; gap: 12px; }
+.anchor-inputs label { display: flex; flex-direction: column; gap: 6px; color: #667085; font-size: 12px; }
+.anchor-inputs input { width: 170px; padding: 8px 10px; border: 1px solid #dfe4ee; border-radius: 9px; color: #172033; font-size: 14px; }
+.anchor-inputs input:focus { border-color: #2563eb; outline: 2px solid #2563eb22; }
+.anchor-note { margin: 12px 0 0; color: #2563eb; font-size: 12px; line-height: 1.6; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { padding: 10px 12px; border-bottom: 1px solid #eef1f6; text-align: left; white-space: nowrap; }
