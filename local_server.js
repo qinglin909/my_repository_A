@@ -14,6 +14,11 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// 🚨 反向代理下取真实客户端 IP：只信任紧挨着的一层代理（Nginx / Vercel），
+// 否则 express-rate-limit 会把所有请求都按代理 IP 限流，并抛 X-Forwarded-For 校验错误。
+// 不要设成 true —— 那会信任客户端伪造的 X-Forwarded-For，限流可被绕过。
+app.set('trust proxy', 1);
+
 // 🚨 安全加固：限制跨域来源，只允许你的正式域名和本地开发
 app.use(cors({
   origin: [
