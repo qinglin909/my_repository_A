@@ -146,6 +146,15 @@
         <small>可一次选多个文件</small>
       </label>
 
+      <div v-if="unresolvedCount" class="warn">
+        {{ unresolvedCount }} 位考生没识别出科类（选科列、班级、文件名里都没有「物理 / 历史」），当前按
+        <select v-model="fallbackSubject" class="inline-select">
+          <option value="physics">物理类</option>
+          <option value="history">历史类</option>
+        </select>
+        计算；也可以在成绩表里加一列「选科」填物理/历史。
+      </div>
+
       <p v-if="errorMessage" class="warn">{{ errorMessage }}</p>
 
       <template v-if="students.length">
@@ -236,9 +245,12 @@ const topAnchors = reactive({
 
 const manualScore = ref('')
 const students = ref([])
+const sourceStudents = ref([])
 const keyword = ref('')
 const uploading = ref(false)
 const errorMessage = ref('')
+const fallbackSubject = ref('physics')
+const unresolvedCount = ref(0)
 
 const lineFields = [
   { key: 'tk', curr: 'currTk', last: 'lastTk' },
@@ -313,12 +325,47 @@ const resetRule = () => {
   rules.history = normalizeRule(defaults.history)
 }
 
-const resolveSubject = (student, fallback) => {
-  const text = `${student.subject || ''} ${student.className || ''}`
-  if (/物理|物/.test(text)) return 'physics'
-  if (/历史|历/.test(text)) return 'history'
-  return fallback
+const inferSubjectFromText = (text) => {
+  const value = String(text || '')
+  if (/物理|理科|理工/.test(value)) return 'physics'
+  if (/历史|文科/.test(value)) return 'history'
+  return null
 }
+
+// 识别顺序：选科列 → 班级名 → 文件名（含“物理/历史”）→ 页面上选的兜底科类
+const resolveSubject = (student) =>
+  inferSubjectFromText(student.subject) ||
+  inferSubjectFromText(student.className) ||
+  student.fileSubject ||
+  fallbackSubject.value
+
+const buildRows = (source) => {
+  let unresolved = 0
+  const rows = source.map((student) => {
+    const detected = inferSubjectFromText(student.subject) ||
+      inferSubjectFromText(student.className) ||
+      student.fileSubject
+    if (!detected) unresolved += 1
+    const resolved = detected || fallbackSubject.value
+    const rule = rules[resolved]
+    const result = convertScore(student.originalScore, rule, topAnchorOptions(resolved))
+    const table = resolved === 'physics' ? BUILT_IN_GD_2026.physics : BUILT_IN_GD_2026.history
+    return {
+      ...student,
+      resolvedSubject: resolved,
+      convertedScore: result ? fmt(result.converted) : '—',
+      diffText: result ? fmt(result.diff) : '—',
+      segmentLabel: result ? SEGMENT_LABELS[result.segment] : '分数异常',
+      rank: result ? lookupRank(result.rounded, table) : '—'
+    }
+  })
+  unresolvedCount.value = unresolved
+  students.value = rows
+}
+
+watch(fallbackSubject, () => {
+  if (sourceStudents.value.length) buildRows(sourceStudents.value)
+})
 
 const handleUpload = async (event) => {
   const files = event.target.files
@@ -327,23 +374,14 @@ const handleUpload = async (event) => {
   errorMessage.value = ''
   try {
     const parsed = await parseScoreExcel(files)
-    const all = parsed.flatMap((file) => file.students)
+    const all = parsed.flatMap((file) => file.students.map((student) => ({
+      ...student,
+      fileSubject: inferSubjectFromText(file.fileName)
+    })))
     if (all.length === 0) throw new Error('没有解析到考生记录，请检查表头是否包含「姓名」和「总分」。')
 
-    students.value = all.map((student) => {
-      const resolved = resolveSubject(student, subject.value)
-      const rule = rules[resolved]
-      const result = convertScore(student.originalScore, rule, topAnchorOptions(resolved))
-      const table = resolved === 'physics' ? BUILT_IN_GD_2026.physics : BUILT_IN_GD_2026.history
-      return {
-        ...student,
-        resolvedSubject: resolved,
-        convertedScore: result ? fmt(result.converted) : '—',
-        diffText: result ? fmt(result.diff) : '—',
-        segmentLabel: result ? SEGMENT_LABELS[result.segment] : '分数异常',
-        rank: result ? lookupRank(result.rounded, table) : '—'
-      }
-    })
+    sourceStudents.value = all
+    buildRows(all)
   } catch (error) {
     errorMessage.value = error.message || '成绩表解析失败'
     students.value = []
@@ -438,6 +476,7 @@ watch([rules, topAnchors], () => {
 .seg { display: inline-flex; padding: 4px; border-radius: 12px; background: #f2f5fa; }
 .seg button { min-width: 88px; padding: 8px 14px; border: 0; border-radius: 9px; background: transparent; color: #667085; font-size: 14px; font-weight: 700; cursor: pointer; }
 .seg button.active { background: #fff; color: #2563eb; box-shadow: 0 2px 8px #10182814; }
+.inline-select { margin: 0 4px; padding: 4px 8px; border: 1px solid #f5c2c2; border-radius: 8px; background: #fff; color: #b42318; font-size: 13px; }
 .warn { margin: 0 0 14px; padding: 12px 14px; border: 1px solid #fed7d7; border-radius: 12px; background: #fff5f5; color: #b42318; font-size: 13px; line-height: 1.6; }
 .line-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
 fieldset { margin: 0; padding: 14px; border: 1px solid #e8ecf3; border-radius: 14px; }

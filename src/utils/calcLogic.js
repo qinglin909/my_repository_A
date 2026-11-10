@@ -69,7 +69,7 @@ export const parseScoreExcel = async (files) => {
     const headers = raw[headerRowIndex].map(normalizeHeader)
     const nameIdx = headers.findIndex(value => value === '姓名')
     const classIdx = headers.findIndex(value => /行政班|班级/.test(value))
-    const subIdx = headers.findIndex(value => /选科|科类|文理/.test(value))
+    const subIdx = headers.findIndex(value => /选科|选考|科类|文理|首选|类别/.test(value))
     const scoreIdx = headers.findIndex(value => /总分|总成绩|联考分|考试成绩/.test(value))
     const rankIdx = headers.findIndex(value => /校排|校名次|校内排名|排名|名次/.test(value))
     if (scoreIdx === -1) throw new Error(`${files[f].name}：找不到“总分/成绩”列`)
