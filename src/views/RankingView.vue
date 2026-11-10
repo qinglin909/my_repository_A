@@ -71,7 +71,7 @@
       <div class="card-head">
         <div>
           <h2>一分一段表</h2>
-          <p>换算分要靠它换成全省排位。内置表只有高分段（物理 550+、历史 520+），低于最低分的考生排位会显示「—」。</p>
+          <p>换算分要靠它换成全省排位。程序不再内置任何排位数据，导入后保存在本机，下次打开自动加载。</p>
         </div>
         <span class="source-badge" :class="{ custom: customRank }">{{ rankSourceLabel }}</span>
       </div>
@@ -79,11 +79,12 @@
         <label class="upload rank-upload">
           <input type="file" accept=".xlsx,.xls,.csv" multiple @change="handleRankUpload" />
           <strong>{{ rankLoading ? '正在解析…' : '导入一分一段表' }}</strong>
-          <small>需要「分数」+「累计人数/位次」两列；文件名或工作表名带物理/历史</small>
+          <small>需要「分数」+「最低排位/累计人数」两列；文件名或工作表名带物理/历史</small>
         </label>
-        <button v-if="customRank" type="button" class="ghost" @click="clearRank">恢复内置表</button>
+        <button v-if="customRank" type="button" class="ghost" @click="clearRank">清除已导入表</button>
       </div>
       <p v-if="rankError" class="warn">{{ rankError }}</p>
+      <p v-if="!hasRankTable" class="empty-hint">还没有导入一分一段表：换算分照常计算，只是「全省排位参考」会显示「—」。</p>
       <p v-if="customRank" class="rank-meta">
         物理 {{ rankTables.physics.length }} 条（{{ rankTables.physics.at(-1)?.score }}–{{ rankTables.physics[0]?.score }} 分）·
         历史 {{ rankTables.history.length }} 条（{{ rankTables.history.at(-1)?.score }}–{{ rankTables.history[0]?.score }} 分）
@@ -162,7 +163,7 @@
       </div>
 
       <p v-if="manualExplain" class="explain"><strong>计算过程：</strong>{{ manualExplain }}</p>
-      <p v-if="!manualRankCovered" class="empty-hint">该换算分低于当前一分一段表的最低分，排位无法给出；导入完整表后可查。</p>
+      <p v-if="manualRankReason" class="empty-hint">{{ manualRankReason }}</p>
       <p v-else class="empty-hint">输入 0–750 之间的分数后自动计算。</p>
     </section>
 
@@ -186,7 +187,7 @@
         计算；也可以在成绩表里加一列「选科」填物理/历史。
       </div>
 
-      <p v-if="lowCoverage.count" class="warn">
+      <p v-if="hasRankTable && lowCoverage.count" class="warn">
         有 {{ lowCoverage.count }} 位考生的换算分低于当前一分一段表的最低分，排位显示为「—」。导入完整的一分一段表后会自动重算。
       </p>
 
@@ -253,7 +254,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import * as XLSX from 'xlsx'
-import { DEFAULT_DATABASES, BUILT_IN_GD_2026 } from '@/utils/calcConfig.js'
+import { DEFAULT_DATABASES } from '@/utils/calcConfig.js'
 import { parseRankTableExcel, parseScoreExcel } from '@/utils/calcLogic.js'
 import {
   LINE_LABELS,
@@ -293,11 +294,7 @@ const unresolvedCount = ref(0)
 const showExplain = ref(false)
 
 const RANK_STORAGE_KEY = 'score_converter_rank_v1'
-const builtInRankTables = {
-  physics: BUILT_IN_GD_2026.physics,
-  history: BUILT_IN_GD_2026.history
-}
-const rankTables = ref({ physics: builtInRankTables.physics, history: builtInRankTables.history })
+const rankTables = ref({ physics: [], history: [] })
 const customRank = ref(false)
 const rankColumns = ref({ physics: null, history: null })
 const rankError = ref('')
@@ -357,12 +354,20 @@ const manualExplain = computed(() =>
 
 const rankTable = computed(() => rankTables.value[subject.value])
 const manualRank = computed(() => (manualResult.value ? lookupRank(manualResult.value.rounded, rankTable.value) : '—'))
-const rankSourceLabel = computed(() => (customRank.value ? '已导入自定义表' : '内置示例表（仅高分段）'))
+const rankSourceLabel = computed(() => (customRank.value ? '已导入并保存在本机' : '未导入'))
+const hasRankTable = computed(() => rankTables.value.physics.length > 0 || rankTables.value.history.length > 0)
 const manualRankCovered = computed(() => {
   if (!manualResult.value) return true
   const table = rankTable.value
   if (!table.length) return false
   return manualResult.value.rounded >= Number(table[table.length - 1].score)
+})
+
+const manualRankReason = computed(() => {
+  if (!manualResult.value) return ''
+  if (!rankTable.value.length) return `还没有导入${SUBJECT_LABELS[subject.value]}的一分一段表，排位无法给出（换算分不受影响）。`
+  if (!manualRankCovered.value) return '换算分低于当前一分一段表的最低分，排位无法给出；请导入覆盖更低分的表。'
+  return ''
 })
 
 const filteredStudents = computed(() => {
@@ -469,7 +474,7 @@ const handleRankUpload = async (event) => {
 }
 
 const clearRank = () => {
-  rankTables.value = { physics: builtInRankTables.physics, history: builtInRankTables.history }
+  rankTables.value = { physics: [], history: [] }
   rankColumns.value = { physics: null, history: null }
   customRank.value = false
   rankError.value = ''
@@ -575,8 +580,8 @@ onMounted(() => {
     const savedRank = JSON.parse(localStorage.getItem(RANK_STORAGE_KEY) || 'null')
     if (savedRank?.physics?.length || savedRank?.history?.length) {
       rankTables.value = {
-        physics: savedRank.physics?.length ? savedRank.physics : builtInRankTables.physics,
-        history: savedRank.history?.length ? savedRank.history : builtInRankTables.history
+        physics: savedRank.physics || [],
+        history: savedRank.history || []
       }
       if (savedRank.columns) rankColumns.value = savedRank.columns
       customRank.value = true
