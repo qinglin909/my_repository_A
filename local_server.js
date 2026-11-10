@@ -177,7 +177,9 @@ app.post('/api/hello', authLimiter, async (req, res) => {
       const isValid = await bcrypt.compare(password, user.passwordHash);
       if (!isValid) return res.status(401).json({ message: '账号或密码错误' });
 
-      const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+      // root 是站点所有者：签发 10 年有效期，省掉反复输密码；其他账号仍然 7 天
+      const expiresIn = user.username === 'root' ? '3650d' : '7d';
+      const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn });
       return res.status(200).json({
         message: '登录成功',
         token,

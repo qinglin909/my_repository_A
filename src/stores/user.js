@@ -29,6 +29,14 @@ export const useUserStore = defineStore('user', () => {
     vipExpiresAt.value = membership.vipExpiresAt || null
   }
 
+  // 静默校验 /api/me 后同步最新会员信息
+  const applyMembership = (user = {}) => {
+    if (user.username) username.value = user.username
+    if (user.role) role.value = user.role
+    if (typeof user.vip === 'boolean') vip.value = user.vip
+    vipExpiresAt.value = user.vipExpiresAt || null
+  }
+
   const logout = () => {
     token.value = ''
     username.value = ''
@@ -37,7 +45,7 @@ export const useUserStore = defineStore('user', () => {
     vipExpiresAt.value = null
   }
 
-  return { token, username, role, vip, vipExpiresAt, isLoggedIn, isVip, login, logout }
+  return { token, username, role, vip, vipExpiresAt, isLoggedIn, isVip, login, logout, applyMembership }
 }, {
   // 🚨 自动持久化：这样刷新页面状态也不会丢
   persist: true
