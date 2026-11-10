@@ -89,6 +89,22 @@
         物理 {{ rankTables.physics.length }} 条（{{ rankTables.physics.at(-1)?.score }}–{{ rankTables.physics[0]?.score }} 分）·
         历史 {{ rankTables.history.length }} 条（{{ rankTables.history.at(-1)?.score }}–{{ rankTables.history[0]?.score }} 分）
       </p>
+      <div v-if="customRank" class="rank-preview">
+        <table>
+          <thead>
+            <tr><th>科类</th><th>分数</th><th>排位</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in rankPreview" :key="row.key">
+              <td>{{ row.subject }}</td>
+              <td>{{ row.score }}</td>
+              <td>{{ row.rank }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="rank-meta">每个科类只显示前 3 行，用来核对「分数」「排位」列是否取对；不是完整数据。</p>
+      </div>
+
       <p v-if="customRank && (rankColumns.physics || rankColumns.history)" class="rank-meta">
         识别列：<template v-if="rankColumns.physics">物理「{{ rankColumns.physics.score }}」+「{{ rankColumns.physics.rank }}」{{ rankColumns.physics.cumulative ? '（累计值）' : '（按人数累加）' }}</template>
         <template v-if="rankColumns.physics && rankColumns.history"> · </template>
@@ -367,6 +383,18 @@ const manualProgress = computed(() =>
 )
 const rankSourceLabel = computed(() => (customRank.value ? '已导入并保存在本机' : '未导入'))
 const hasRankTable = computed(() => rankTables.value.physics.length > 0 || rankTables.value.history.length > 0)
+
+// 每个科类取前 3 行，导入后直接核对「分数」「排位」两列取得对不对
+const rankPreview = computed(() => {
+  const rows = []
+  for (const key of SUBJECTS) {
+    const table = rankTables.value[key] || []
+    for (const item of table.slice(0, 3)) {
+      rows.push({ key: `${key}-${item.score}`, subject: SUBJECT_LABELS[key], score: item.score, rank: item.rank })
+    }
+  }
+  return rows
+})
 const manualRankCovered = computed(() => {
   if (!manualResult.value) return true
   const table = rankTable.value
@@ -706,6 +734,9 @@ td { color: #344054; }
 .rank-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .rank-upload { flex: 1; min-width: 240px; padding: 18px 16px; }
 .rank-meta { margin: 12px 0 0; color: #667085; font-size: 12px; }
+.rank-preview { margin-top: 14px; padding: 12px 14px; border: 1px solid #eef1f6; border-radius: 12px; background: #fbfcfe; }
+.rank-preview table { width: auto; min-width: 260px; }
+.rank-preview th, .rank-preview td { padding: 6px 14px; }
 .explain-cell { min-width: 320px; max-width: 520px; white-space: normal; color: #475467; font-size: 12px; line-height: 1.7; }
 .export-btn { padding: 10px 16px; border: 0; border-radius: 10px; background: #2563eb; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .export-btn:hover { background: #1d4ed8; }
