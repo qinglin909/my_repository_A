@@ -157,6 +157,10 @@
           <strong class="small">{{ SEGMENT_LABELS[manualResult.segment] }}</strong>
         </div>
         <div>
+          <span>区间进度</span>
+          <strong>{{ manualProgress }}</strong>
+        </div>
+        <div>
           <span>全省排位参考</span>
           <strong>{{ manualRank }}</strong>
         </div>
@@ -211,6 +215,7 @@
                 <th>原始分</th>
                 <th>换算分</th>
                 <th>线差</th>
+                <th>进度</th>
                 <th>所在区间</th>
                 <th>全省排位参考</th>
                 <th v-if="showExplain">计算过程</th>
@@ -225,6 +230,7 @@
                 <td>{{ item.originalScore }}</td>
                 <td class="highlight">{{ item.convertedScore }}</td>
                 <td>{{ item.diffText }}</td>
+                <td>{{ item.progressText }}</td>
                 <td>{{ item.segmentLabel }}</td>
                 <td>{{ item.rank }}</td>
                 <td v-if="showExplain" class="explain-cell">{{ item.explain }}</td>
@@ -354,6 +360,11 @@ const manualExplain = computed(() =>
 
 const rankTable = computed(() => rankTables.value[subject.value])
 const manualRank = computed(() => (manualResult.value ? lookupRank(manualResult.value.rounded, rankTable.value) : '—'))
+const manualProgress = computed(() =>
+  manualResult.value && manualResult.value.progress !== null && manualResult.value.progress !== undefined
+    ? Number(manualResult.value.progress).toFixed(4)
+    : '—'
+)
 const rankSourceLabel = computed(() => (customRank.value ? '已导入并保存在本机' : '未导入'))
 const hasRankTable = computed(() => rankTables.value.physics.length > 0 || rankTables.value.history.length > 0)
 const manualRankCovered = computed(() => {
@@ -425,6 +436,9 @@ const buildRows = (source) => {
       resolvedSubject: resolved,
       convertedScore: result ? fmt(result.converted) : '—',
       diffText: result ? fmt(result.diff) : '—',
+      progressText: result && result.progress !== null && result.progress !== undefined
+        ? Number(result.progress).toFixed(4)
+        : '—',
       segmentLabel: result ? SEGMENT_LABELS[result.segment] : '分数异常',
       rank: result ? lookupRank(result.rounded, table) : '—',
       rankCovered: result && table.length ? result.rounded >= Number(table[table.length - 1].score) : false,
@@ -518,6 +532,7 @@ const exportExcel = () => {
       原始分: item.originalScore,
       换算分: item.convertedScore,
       线差: item.diffText,
+      进度: item.progressText,
       所在区间: item.segmentLabel,
       全省排位参考: item.rank,
       计算过程: item.explain
