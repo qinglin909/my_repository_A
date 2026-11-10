@@ -88,6 +88,11 @@
         物理 {{ rankTables.physics.length }} 条（{{ rankTables.physics.at(-1)?.score }}–{{ rankTables.physics[0]?.score }} 分）·
         历史 {{ rankTables.history.length }} 条（{{ rankTables.history.at(-1)?.score }}–{{ rankTables.history[0]?.score }} 分）
       </p>
+      <p v-if="customRank && (rankColumns.physics || rankColumns.history)" class="rank-meta">
+        识别列：<template v-if="rankColumns.physics">物理「{{ rankColumns.physics.score }}」+「{{ rankColumns.physics.rank }}」{{ rankColumns.physics.cumulative ? '（累计值）' : '（按人数累加）' }}</template>
+        <template v-if="rankColumns.physics && rankColumns.history"> · </template>
+        <template v-if="rankColumns.history">历史「{{ rankColumns.history.score }}」+「{{ rankColumns.history.rank }}」{{ rankColumns.history.cumulative ? '（累计值）' : '（按人数累加）' }}</template>
+      </p>
     </section>
 
     <section class="card">
@@ -294,6 +299,7 @@ const builtInRankTables = {
 }
 const rankTables = ref({ physics: builtInRankTables.physics, history: builtInRankTables.history })
 const customRank = ref(false)
+const rankColumns = ref({ physics: null, history: null })
 const rankError = ref('')
 const rankLoading = ref(false)
 const lowCoverage = ref({ count: 0, min: null })
@@ -447,8 +453,12 @@ const handleRankUpload = async (event) => {
       physics: parsed.physics.length ? parsed.physics : rankTables.value.physics,
       history: parsed.history.length ? parsed.history : rankTables.value.history
     }
+    rankColumns.value = {
+      physics: parsed.columns?.physics || rankColumns.value.physics,
+      history: parsed.columns?.history || rankColumns.value.history
+    }
     customRank.value = true
-    localStorage.setItem(RANK_STORAGE_KEY, JSON.stringify(rankTables.value))
+    localStorage.setItem(RANK_STORAGE_KEY, JSON.stringify({ ...rankTables.value, columns: rankColumns.value }))
     if (sourceStudents.value.length) buildRows(sourceStudents.value)
   } catch (error) {
     rankError.value = error.message || '一分一段表解析失败'
@@ -460,6 +470,7 @@ const handleRankUpload = async (event) => {
 
 const clearRank = () => {
   rankTables.value = { physics: builtInRankTables.physics, history: builtInRankTables.history }
+  rankColumns.value = { physics: null, history: null }
   customRank.value = false
   rankError.value = ''
   localStorage.removeItem(RANK_STORAGE_KEY)
@@ -567,6 +578,7 @@ onMounted(() => {
         physics: savedRank.physics?.length ? savedRank.physics : builtInRankTables.physics,
         history: savedRank.history?.length ? savedRank.history : builtInRankTables.history
       }
+      if (savedRank.columns) rankColumns.value = savedRank.columns
       customRank.value = true
     }
   } catch {

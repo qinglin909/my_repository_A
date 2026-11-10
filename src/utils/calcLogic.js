@@ -141,9 +141,10 @@ export const parseUnivExcel = async (file) => {
   return { physics: physicsData, history: historyData }
 }
 
-// 🎯 解析一分一段表：分数 + 累计人数/位次，按物理/历史分组（文件名或工作表名需含科类）
+// 🎯 解析一分一段表：优先「最低排位/位次」，其次「累计人数」；只有「人数」时按分数累加。
+// 返回 columns 记录每个科类实际使用的两列表头，界面会显示出来供核对。
 export const parseRankTableExcel = async (files) => {
-  const result = { physics: [], history: [] }
+  const result = { physics: [], history: [], columns: { physics: null, history: null } }
   for (const file of files) {
     const workbook = await readExcel(file)
     for (const sheetName of workbook.SheetNames) {
@@ -155,34 +156,71 @@ export const parseRankTableExcel = async (files) => {
       if (!subject) continue
 
       const normalize = (value) => String(value ?? '').replace(/[\s　()（）:：]/g, '')
+      const rankPatterns = [
+        [/最低排位|排位|位次/, true],
+        [/累计/, true],
+        [/排名|名次/, true],
+        [/人数/, false]
+      ]
+
       let headerIndex = -1
       let scoreIdx = -1
       let rankIdx = -1
-      for (let i = 0; i < Math.min(raw.length, 20); i++) {
-        const headers = raw[i].map(normalize)
-        const scoreIndex = headers.findIndex((value) => /分数|成绩|总分/.test(value))
-        const cumulativeIndex = headers.findIndex((value) => /累计|位次|排名|名次/.test(value))
-        const countIndex = headers.findIndex((value) => /人数/.test(value))
-        const rankIndex = cumulativeIndex >= 0 ? cumulativeIndex : countIndex
+      let isCumulative = true
+      let headers = []
+
+      for (let i = 0; i < Math.min(raw.length, 30); i++) {
+        const candidate = raw[i].map(normalize)
+        const scoreIndex = candidate.findIndex((value) => /文化总分|总分|分数|成绩/.test(value))
+        let rankIndex = -1
+        let cumulative = true
+        for (const [pattern, flag] of rankPatterns) {
+          const index = candidate.findIndex((value) => pattern.test(value))
+          if (index >= 0) {
+            rankIndex = index
+            cumulative = flag
+            break
+          }
+        }
         if (scoreIndex >= 0 && rankIndex >= 0) {
           headerIndex = i
           scoreIdx = scoreIndex
           rankIdx = rankIndex
+          isCumulative = cumulative
+          headers = candidate
           break
         }
       }
       if (headerIndex === -1) continue
 
+      const rows = []
       for (let i = headerIndex + 1; i < raw.length; i++) {
         const row = raw[i]
         const score = Number(String(row[scoreIdx] ?? '').replace(/[^\d.]/g, ''))
-        const rank = Number(String(row[rankIdx] ?? '').replace(/[^\d]/g, ''))
-        if (Number.isFinite(score) && Number.isFinite(rank) && score > 0 && rank > 0) {
-          result[subject].push({ score, rank })
+        const value = Number(String(row[rankIdx] ?? '').replace(/[^\d]/g, ''))
+        if (Number.isFinite(score) && Number.isFinite(value) && score > 0 && value > 0) {
+          rows.push({ score, value })
         }
+      }
+      rows.sort((a, b) => b.score - a.score)
+
+      let running = 0
+      for (const row of rows) {
+        if (isCumulative) {
+          result[subject].push({ score: row.score, rank: row.value })
+        } else {
+          running += row.value
+          result[subject].push({ score: row.score, rank: running })
+        }
+      }
+      result.columns[subject] = {
+        score: headers[scoreIdx] || '',
+        rank: headers[rankIdx] || '',
+        cumulative: isCumulative
       }
     }
   }
+
   const normalizeTable = (items) => {
     const byScore = new Map()
     for (const item of items) byScore.set(item.score, item)
