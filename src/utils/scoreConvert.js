@@ -173,7 +173,7 @@ export const describeConversion = (result, rawRule, options = {}) => {
       const maxScore = Number(options.maxScore)
       const topDiff = Number(options.targetMaxScore) - maxScore
       return `原始分 ${result.score} 在特控线 ${rule.currTk} 以上；已启用最高分校准：本次最高分 ${maxScore} → 往年 ${options.targetMaxScore}，最高分线差 ${signed(topDiff)}，` +
-        `与特控线线差 ${signed(diffs.tk)} 之间按位置过渡 ${Number(result.progress).toFixed(4)}，本次线差 ${signed(result.diff)}；` +
+        `与特控线线差 ${signed(diffs.tk)} 之间过渡，本次线差 ${signed(result.diff)}；` +
         `换算分 = ${result.score} ${op(result.diff)} ${ending}。`
     }
     return `原始分 ${result.score} 在特控线 ${rule.currTk} 以上，统一使用特控线线差 ${signed(diffs.tk)}（${rule.lastTk} − ${rule.currTk}）；` +
@@ -188,9 +188,7 @@ export const describeConversion = (result, rawRule, options = {}) => {
   const lowerDiff = diffs[lowerKey]
   const progress = Number(result.progress || 0).toFixed(4)
 
-  return `原始分 ${result.score} 在${LINE_LABELS[lowerKey]} ${lowerScore} 与${LINE_LABELS[upperKey]} ${upperScore} 之间：` +
-    `进度 = (${result.score} − ${lowerScore}) ÷ (${upperScore} − ${lowerScore}) = ${progress}；` +
-    `线差 = ${LINE_LABELS[lowerKey]}线差 ${signed(lowerDiff)} + ${progress} × (${LINE_LABELS[upperKey]}线差 ${signed(upperDiff)} − ${LINE_LABELS[lowerKey]}线差 ${signed(lowerDiff)}) = ${signed(result.diff)}；` +
+  return `原始分 ${result.score} 在${LINE_LABELS[lowerKey]} ${lowerScore} 与${LINE_LABELS[upperKey]} ${upperScore} 之间，按两线之间的线差过渡得线差 ${signed(result.diff)}；` +
     `换算分 = ${result.score} ${op(result.diff)} ${ending}。`
 }
 
