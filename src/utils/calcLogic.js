@@ -162,16 +162,25 @@ export const parseRankTableExcel = async (files) => {
         [/排名|名次/, true],
         [/人数/, false]
       ]
+      // 分数列表头：不能把「分数段人数」当成分数列
+      const isScoreHeader = (value) =>
+        Boolean(value) && !/人数|累计|排位|位次/.test(value) && /文化总分|总分|成绩|分数/.test(value)
 
       let headerIndex = -1
       let scoreIdx = -1
       let rankIdx = -1
       let isCumulative = true
-      let headers = []
+      let scoreLabel = ''
+      let rankLabel = ''
 
+      // 表头可能是多行合并：分数列与排位列分别在不同行出现，这里逐行累积
       for (let i = 0; i < Math.min(raw.length, 30); i++) {
         const candidate = raw[i].map(normalize)
-        const scoreIndex = candidate.findIndex((value) => /文化总分|总分|分数|成绩/.test(value))
+        const scoreIndex = candidate.findIndex(isScoreHeader)
+        if (scoreIndex >= 0) {
+          scoreIdx = scoreIndex
+          scoreLabel = candidate[scoreIndex]
+        }
         let rankIndex = -1
         let cumulative = true
         for (const [pattern, flag] of rankPatterns) {
@@ -179,15 +188,16 @@ export const parseRankTableExcel = async (files) => {
           if (index >= 0) {
             rankIndex = index
             cumulative = flag
+            rankLabel = candidate[index]
             break
           }
         }
-        if (scoreIndex >= 0 && rankIndex >= 0) {
-          headerIndex = i
-          scoreIdx = scoreIndex
+        if (rankIndex >= 0) {
           rankIdx = rankIndex
           isCumulative = cumulative
-          headers = candidate
+        }
+        if (scoreIdx >= 0 && rankIdx >= 0) {
+          headerIndex = i
           break
         }
       }
@@ -214,8 +224,8 @@ export const parseRankTableExcel = async (files) => {
         }
       }
       result.columns[subject] = {
-        score: headers[scoreIdx] || '',
-        rank: headers[rankIdx] || '',
+        score: scoreLabel || `第${scoreIdx + 1}列`,
+        rank: rankLabel || `第${rankIdx + 1}列`,
         cumulative: isCumulative
       }
     }
