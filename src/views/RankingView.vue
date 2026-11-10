@@ -270,7 +270,7 @@
                 <td>{{ item.diffText }}</td>
                 <td>{{ item.progressText }}</td>
                 <td>{{ item.segmentLabel }}</td>
-                <td :class="['tier', item.tierLabel === '985' ? 'tier-985' : item.tierLabel === '211' ? 'tier-211' : '']">{{ item.tierLabel }}</td>
+                <td :class="['tier', item.tierLabel === '985线' ? 'tier-985' : item.tierLabel === '211线' ? 'tier-211' : '']">{{ item.tierLabel }}</td>
                 <td>{{ item.rank }}</td>
                 <td v-if="showExplain" class="explain-cell">{{ item.explain }}</td>
               </tr>
@@ -289,7 +289,7 @@
         <li>特控线以上沿用特控线线差；设置了「高分段校准」时，在特控线与本次最高分之间线性过渡。</li>
         <li>特控线与本科线之间、本科线与专科线之间，线差按分数位置线性过渡，每分分差 = 线差之差 ÷ 分差。</li>
         <li>专科线以下不做换算，保持原始分。</li>
-        <li>可选 985/211 参考线：换算分（取整）达到该线即标为 985/211；不填则不判断，只显示所在线。</li>
+        <li>可选 985/211 参考线：换算分（取整）达到该线即标为「985线 / 211线」；不填则不判断，只显示所在线。</li>
         <li>换算分 = 原始分 + 该位置的线差，四舍五入取整；<strong>查一分一段表用的就是这个取整后的分数</strong>，精确值只作参考。</li>
       </ol>
       <p class="empty-hint">锚点校验：学校本科线换算后等于省控本科线，学校特控线换算后等于省控特控线。</p>
@@ -451,8 +451,8 @@ const classifyTier = (rounded, subjectKey) => {
   const s211 = Number(lines.s211)
   const score = Number(rounded)
   if (!Number.isFinite(score)) return '—'
-  if (Number.isFinite(s985) && lines.s985 !== '' && score >= s985) return '985'
-  if (Number.isFinite(s211) && lines.s211 !== '' && score >= s211) return '211'
+  if (Number.isFinite(s985) && lines.s985 !== '' && score >= s985) return '985线'
+  if (Number.isFinite(s211) && lines.s211 !== '' && score >= s211) return '211线'
   return null
 }
 
