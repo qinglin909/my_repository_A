@@ -61,13 +61,18 @@
             <input v-model.number="topAnchors[subject].targetMaxScore" type="number" min="0" max="750" step="0.5" placeholder="例如 650" />
           </label>
         </div>
-        <p class="anchor-desc" style="margin-top: 16px;"><strong>985 / 211 参考线（可选）</strong>：填往年的院校最低录取分（广东常用 985=华工、211=华师）。换算分达到即标层次，不填则不判断。</p>
+        <p class="anchor-desc" style="margin-top: 16px;">
+          <strong>985 / 211 参考线（可选，分科类）</strong>：按往年院校最低录取分判断。
+          <template v-if="subject === 'physics'">物理 985 用<strong>中山大学</strong>、211 用<strong>暨南大学</strong>；</template>
+          <template v-else>历史 985 用<strong>华南理工</strong>、211 用<strong>暨南大学</strong>；</template>
+          换算分达到即标层次，不填则不判断。
+        </p>
         <div class="anchor-inputs">
-          <label>985 参考线（如华工）
-            <input v-model.number="tierLines[subject].s985" type="number" min="0" max="750" step="0.5" placeholder="填往年录取分" />
+          <label>985 参考线（{{ subject === 'physics' ? '中山大学' : '华南理工' }}）
+            <input v-model.number="tierLines[subject].s985" type="number" min="0" max="750" step="0.5" placeholder="往年最低录取分" />
           </label>
-          <label>211 参考线（如华师）
-            <input v-model.number="tierLines[subject].s211" type="number" min="0" max="750" step="0.5" placeholder="填往年录取分" />
+          <label>211 参考线（暨南大学）
+            <input v-model.number="tierLines[subject].s211" type="number" min="0" max="750" step="0.5" placeholder="往年最低录取分" />
           </label>
         </div>
 
