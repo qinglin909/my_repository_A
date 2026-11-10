@@ -212,9 +212,9 @@ const findRankValue = (score, table) => {
     .filter((item) => Number.isFinite(Number(item.score)) && Number.isFinite(Number(item.rank)))
     .sort((a, b) => Number(b.score) - Number(a.score))
   if (sorted.length === 0) return '—'
-  if (score > Number(sorted[0].score)) return `高于表内最高分（${sorted[0].score}）`
+  if (score > Number(sorted[0].score)) return '—'
   for (const item of sorted) {
     if (score >= Number(item.score)) return item.rank
   }
-  return `低于表内最低分（${sorted[sorted.length - 1].score}）`
+  return '—'
 }

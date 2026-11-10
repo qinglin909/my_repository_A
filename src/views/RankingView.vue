@@ -68,6 +68,29 @@
     </section>
 
     <section class="card">
+      <div class="card-head">
+        <div>
+          <h2>一分一段表</h2>
+          <p>换算分要靠它换成全省排位。内置表只有高分段（物理 550+、历史 520+），低于最低分的考生排位会显示「—」。</p>
+        </div>
+        <span class="source-badge" :class="{ custom: customRank }">{{ rankSourceLabel }}</span>
+      </div>
+      <div class="rank-row">
+        <label class="upload rank-upload">
+          <input type="file" accept=".xlsx,.xls,.csv" multiple @change="handleRankUpload" />
+          <strong>{{ rankLoading ? '正在解析…' : '导入一分一段表' }}</strong>
+          <small>需要「分数」+「累计人数/位次」两列；文件名或工作表名带物理/历史</small>
+        </label>
+        <button v-if="customRank" type="button" class="ghost" @click="clearRank">恢复内置表</button>
+      </div>
+      <p v-if="rankError" class="warn">{{ rankError }}</p>
+      <p v-if="customRank" class="rank-meta">
+        物理 {{ rankTables.physics.length }} 条（{{ rankTables.physics.at(-1)?.score }}–{{ rankTables.physics[0]?.score }} 分）·
+        历史 {{ rankTables.history.length }} 条（{{ rankTables.history.at(-1)?.score }}–{{ rankTables.history[0]?.score }} 分）
+      </p>
+    </section>
+
+    <section class="card">
       <h2>换算依据</h2>
       <p class="card-desc">线差 = 省控线 − 学校预估线；每分分差 = 相邻两条线的线差之差 ÷ 分差，表示这一段里每提高 1 分，换算分相对原始分多走的幅度。</p>
       <div class="table-wrap">
@@ -134,6 +157,7 @@
       </div>
 
       <p v-if="manualExplain" class="explain"><strong>计算过程：</strong>{{ manualExplain }}</p>
+      <p v-if="!manualRankCovered" class="empty-hint">该换算分低于当前一分一段表的最低分，排位无法给出；导入完整表后可查。</p>
       <p v-else class="empty-hint">输入 0–750 之间的分数后自动计算。</p>
     </section>
 
@@ -156,6 +180,10 @@
         </select>
         计算；也可以在成绩表里加一列「选科」填物理/历史。
       </div>
+
+      <p v-if="lowCoverage.count" class="warn">
+        有 {{ lowCoverage.count }} 位考生的换算分低于当前一分一段表的最低分，排位显示为「—」。导入完整的一分一段表后会自动重算。
+      </p>
 
       <p v-if="errorMessage" class="warn">{{ errorMessage }}</p>
 
@@ -221,7 +249,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import * as XLSX from 'xlsx'
 import { DEFAULT_DATABASES, BUILT_IN_GD_2026 } from '@/utils/calcConfig.js'
-import { parseScoreExcel } from '@/utils/calcLogic.js'
+import { parseRankTableExcel, parseScoreExcel } from '@/utils/calcLogic.js'
 import {
   LINE_LABELS,
   SEGMENT_LABELS,
@@ -258,6 +286,17 @@ const errorMessage = ref('')
 const fallbackSubject = ref('physics')
 const unresolvedCount = ref(0)
 const showExplain = ref(false)
+
+const RANK_STORAGE_KEY = 'score_converter_rank_v1'
+const builtInRankTables = {
+  physics: BUILT_IN_GD_2026.physics,
+  history: BUILT_IN_GD_2026.history
+}
+const rankTables = ref({ physics: builtInRankTables.physics, history: builtInRankTables.history })
+const customRank = ref(false)
+const rankError = ref('')
+const rankLoading = ref(false)
+const lowCoverage = ref({ count: 0, min: null })
 
 const lineFields = [
   { key: 'tk', curr: 'currTk', last: 'lastTk' },
@@ -310,8 +349,15 @@ const manualExplain = computed(() =>
     : ''
 )
 
-const rankTable = computed(() => (subject.value === 'physics' ? BUILT_IN_GD_2026.physics : BUILT_IN_GD_2026.history))
+const rankTable = computed(() => rankTables.value[subject.value])
 const manualRank = computed(() => (manualResult.value ? lookupRank(manualResult.value.rounded, rankTable.value) : '—'))
+const rankSourceLabel = computed(() => (customRank.value ? '已导入自定义表' : '内置示例表（仅高分段）'))
+const manualRankCovered = computed(() => {
+  if (!manualResult.value) return true
+  const table = rankTable.value
+  if (!table.length) return false
+  return manualResult.value.rounded >= Number(table[table.length - 1].score)
+})
 
 const filteredStudents = computed(() => {
   const query = keyword.value.trim().toLocaleLowerCase()
@@ -362,7 +408,7 @@ const buildRows = (source) => {
     const resolved = detected || fallbackSubject.value
     const rule = rules[resolved]
     const result = convertScore(student.originalScore, rule, topAnchorOptions(resolved))
-    const table = resolved === 'physics' ? BUILT_IN_GD_2026.physics : BUILT_IN_GD_2026.history
+    const table = rankTables.value[resolved]
     return {
       ...student,
       resolvedSubject: resolved,
@@ -370,16 +416,55 @@ const buildRows = (source) => {
       diffText: result ? fmt(result.diff) : '—',
       segmentLabel: result ? SEGMENT_LABELS[result.segment] : '分数异常',
       rank: result ? lookupRank(result.rounded, table) : '—',
+      rankCovered: result && table.length ? result.rounded >= Number(table[table.length - 1].score) : false,
       explain: result ? describeConversion(result, rule, topAnchorOptions(resolved)) : '分数异常，无法换算'
     }
   })
   unresolvedCount.value = unresolved
+  const uncovered = rows.filter((row) => row.rankCovered === false)
+  lowCoverage.value = {
+    count: uncovered.length,
+    min: uncovered.length ? Math.min(...uncovered.map((row) => Number(row.originalScore))) : null
+  }
   students.value = rows
 }
 
 watch(fallbackSubject, () => {
   if (sourceStudents.value.length) buildRows(sourceStudents.value)
 })
+
+const handleRankUpload = async (event) => {
+  const files = event.target.files
+  if (!files || files.length === 0) return
+  rankLoading.value = true
+  rankError.value = ''
+  try {
+    const parsed = await parseRankTableExcel(files)
+    if (!parsed.physics.length && !parsed.history.length) {
+      throw new Error('没有识别到排位数据：工作表里需要「分数」和「累计人数/位次」两列，文件名或工作表名要带「物理」或「历史」。')
+    }
+    rankTables.value = {
+      physics: parsed.physics.length ? parsed.physics : rankTables.value.physics,
+      history: parsed.history.length ? parsed.history : rankTables.value.history
+    }
+    customRank.value = true
+    localStorage.setItem(RANK_STORAGE_KEY, JSON.stringify(rankTables.value))
+    if (sourceStudents.value.length) buildRows(sourceStudents.value)
+  } catch (error) {
+    rankError.value = error.message || '一分一段表解析失败'
+  } finally {
+    rankLoading.value = false
+    event.target.value = ''
+  }
+}
+
+const clearRank = () => {
+  rankTables.value = { physics: builtInRankTables.physics, history: builtInRankTables.history }
+  customRank.value = false
+  rankError.value = ''
+  localStorage.removeItem(RANK_STORAGE_KEY)
+  if (sourceStudents.value.length) buildRows(sourceStudents.value)
+}
 
 const handleUpload = async (event) => {
   const files = event.target.files
@@ -476,6 +561,19 @@ const exportExcel = () => {
 
 onMounted(() => {
   try {
+    const savedRank = JSON.parse(localStorage.getItem(RANK_STORAGE_KEY) || 'null')
+    if (savedRank?.physics?.length || savedRank?.history?.length) {
+      rankTables.value = {
+        physics: savedRank.physics?.length ? savedRank.physics : builtInRankTables.physics,
+        history: savedRank.history?.length ? savedRank.history : builtInRankTables.history
+      }
+      customRank.value = true
+    }
+  } catch {
+    localStorage.removeItem(RANK_STORAGE_KEY)
+  }
+
+  try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
     const savedRules = saved?.rules || saved
     if (savedRules?.physics) rules.physics = normalizeRule(savedRules.physics)
@@ -571,6 +669,11 @@ td { color: #344054; }
 .table-tools span { color: #667085; font-size: 13px; }
 .toggle { display: inline-flex; align-items: center; gap: 6px; color: #475467; font-size: 13px; cursor: pointer; }
 .explain { margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; background: #f5f9ff; color: #334155; font-size: 13px; line-height: 1.8; }
+.source-badge { padding: 6px 12px; border-radius: 999px; background: #fff7ed; color: #b45309; font-size: 12px; font-weight: 700; }
+.source-badge.custom { background: #ecfdf3; color: #027a48; }
+.rank-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.rank-upload { flex: 1; min-width: 240px; padding: 18px 16px; }
+.rank-meta { margin: 12px 0 0; color: #667085; font-size: 12px; }
 .explain-cell { min-width: 320px; max-width: 520px; white-space: normal; color: #475467; font-size: 12px; line-height: 1.7; }
 .export-btn { padding: 10px 16px; border: 0; border-radius: 10px; background: #2563eb; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .export-btn:hover { background: #1d4ed8; }

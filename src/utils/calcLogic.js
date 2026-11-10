@@ -140,3 +140,55 @@ export const parseUnivExcel = async (file) => {
   })
   return { physics: physicsData, history: historyData }
 }
+
+// 🎯 解析一分一段表：分数 + 累计人数/位次，按物理/历史分组（文件名或工作表名需含科类）
+export const parseRankTableExcel = async (files) => {
+  const result = { physics: [], history: [] }
+  for (const file of files) {
+    const workbook = await readExcel(file)
+    for (const sheetName of workbook.SheetNames) {
+      const sheet = workbook.Sheets[sheetName]
+      const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+      if (!raw.length) continue
+      const label = `${file.name} ${sheetName}`
+      const subject = /物理/.test(label) ? 'physics' : /历史/.test(label) ? 'history' : null
+      if (!subject) continue
+
+      const normalize = (value) => String(value ?? '').replace(/[\s　()（）:：]/g, '')
+      let headerIndex = -1
+      let scoreIdx = -1
+      let rankIdx = -1
+      for (let i = 0; i < Math.min(raw.length, 20); i++) {
+        const headers = raw[i].map(normalize)
+        const scoreIndex = headers.findIndex((value) => /分数|成绩|总分/.test(value))
+        const cumulativeIndex = headers.findIndex((value) => /累计|位次|排名|名次/.test(value))
+        const countIndex = headers.findIndex((value) => /人数/.test(value))
+        const rankIndex = cumulativeIndex >= 0 ? cumulativeIndex : countIndex
+        if (scoreIndex >= 0 && rankIndex >= 0) {
+          headerIndex = i
+          scoreIdx = scoreIndex
+          rankIdx = rankIndex
+          break
+        }
+      }
+      if (headerIndex === -1) continue
+
+      for (let i = headerIndex + 1; i < raw.length; i++) {
+        const row = raw[i]
+        const score = Number(String(row[scoreIdx] ?? '').replace(/[^\d.]/g, ''))
+        const rank = Number(String(row[rankIdx] ?? '').replace(/[^\d]/g, ''))
+        if (Number.isFinite(score) && Number.isFinite(rank) && score > 0 && rank > 0) {
+          result[subject].push({ score, rank })
+        }
+      }
+    }
+  }
+  const normalizeTable = (items) => {
+    const byScore = new Map()
+    for (const item of items) byScore.set(item.score, item)
+    return [...byScore.values()].sort((a, b) => b.score - a.score)
+  }
+  result.physics = normalizeTable(result.physics)
+  result.history = normalizeTable(result.history)
+  return result
+}
