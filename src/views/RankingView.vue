@@ -157,12 +157,12 @@
 
       <div v-if="manualResult" class="result-grid">
         <div class="result-main">
-          <span>换算分</span>
-          <strong>{{ fmt(manualResult.converted) }}</strong>
+          <span>换算分（取整）</span>
+          <strong>{{ manualResult.rounded }}</strong>
         </div>
         <div>
-          <span>取整参考</span>
-          <strong>{{ manualResult.rounded }}</strong>
+          <span>换算精确值</span>
+          <strong>{{ fmt(manualResult.converted) }}</strong>
         </div>
         <div>
           <span>线差</span>
@@ -229,7 +229,8 @@
                 <th>班级</th>
                 <th>科类</th>
                 <th>原始分</th>
-                <th>换算分</th>
+                <th>换算分（取整）</th>
+                <th>换算精确值</th>
                 <th>线差</th>
                 <th>进度</th>
                 <th>所在区间</th>
@@ -245,6 +246,7 @@
                 <td>{{ SUBJECT_LABELS[item.resolvedSubject] }}</td>
                 <td>{{ item.originalScore }}</td>
                 <td class="highlight">{{ item.convertedScore }}</td>
+                <td class="exact">{{ item.convertedExact }}</td>
                 <td>{{ item.diffText }}</td>
                 <td>{{ item.progressText }}</td>
                 <td>{{ item.segmentLabel }}</td>
@@ -266,7 +268,7 @@
         <li>特控线以上沿用特控线线差；设置了「高分段校准」时，在特控线与本次最高分之间线性过渡。</li>
         <li>特控线与本科线之间、本科线与专科线之间，线差按分数位置线性过渡，每分分差 = 线差之差 ÷ 分差。</li>
         <li>专科线以下不做换算，保持原始分。</li>
-        <li>换算分 = 原始分 + 该位置的线差，四舍五入取整后，再用一分一段表查全省排位参考。</li>
+        <li>换算分 = 原始分 + 该位置的线差，四舍五入取整；<strong>查一分一段表用的就是这个取整后的分数</strong>，精确值只作参考。</li>
       </ol>
       <p class="empty-hint">锚点校验：学校本科线换算后等于省控本科线，学校特控线换算后等于省控特控线。</p>
     </section>
@@ -462,7 +464,8 @@ const buildRows = (source) => {
     return {
       ...student,
       resolvedSubject: resolved,
-      convertedScore: result ? fmt(result.converted) : '—',
+      convertedScore: result ? result.rounded : '—',
+      convertedExact: result ? fmt(result.converted) : '—',
       diffText: result ? fmt(result.diff) : '—',
       progressText: result && result.progress !== null && result.progress !== undefined
         ? Number(result.progress).toFixed(4)
@@ -559,6 +562,7 @@ const exportExcel = () => {
       科类: SUBJECT_LABELS[item.resolvedSubject],
       原始分: item.originalScore,
       换算分: item.convertedScore,
+      换算精确值: item.convertedExact,
       线差: item.diffText,
       进度: item.progressText,
       所在区间: item.segmentLabel,
@@ -741,6 +745,7 @@ td { color: #344054; }
 .export-btn { padding: 10px 16px; border: 0; border-radius: 10px; background: #2563eb; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .export-btn:hover { background: #1d4ed8; }
 .highlight { color: #2563eb; font-weight: 800; }
+.exact { color: #98a2b3; font-size: 12px; }
 .note-card ol { margin: 12px 0 0; padding-left: 20px; color: #475467; font-size: 14px; line-height: 1.9; }
 .note-card code { padding: 2px 6px; border-radius: 6px; background: #f2f4f7; font-size: 13px; }
 @media (max-width: 640px) {
