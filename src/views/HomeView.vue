@@ -44,6 +44,11 @@
             <span v-for="skill in skills" :key="skill">{{ skill }}</span>
           </div>
         </section>
+
+        <section class="section htls-section" aria-labelledby="htls-heading">
+          <h2 id="htls-heading" class="section-title">河 图 洛 书</h2>
+          <HeTuLuoShu />
+        </section>
       </main>
 
       <footer class="home-footer">
@@ -59,21 +64,16 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import HeTuLuoShu from '@/components/HeTuLuoShu.vue'
+import { formatLongDate, formatWeekday, getGreeting } from '@/utils/date'
 
 const userStore = useUserStore()
 const now = new Date()
 const displayName = '大明'
-const dateLabel = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }).format(now)
-const weekday = new Intl.DateTimeFormat('zh-CN', { weekday: 'long' }).format(now)
+const dateLabel = formatLongDate(now)
+const weekday = formatWeekday(now)
 const year = now.getFullYear()
-const greeting = computed(() => {
-  const hour = new Date().getHours()
-  if (hour < 6) return '夜深了'
-  if (hour < 11) return '早安'
-  if (hour < 14) return '午安'
-  if (hour < 18) return '下午好'
-  return '晚上好'
-})
+const greeting = computed(() => getGreeting())
 
 const allTools = [
   { path: '/notes', mark: '札', name: '随心笔记', description: '记录想法，整理所学' },

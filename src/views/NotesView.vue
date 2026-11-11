@@ -122,6 +122,9 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 // Mermaid is loaded on demand to keep the initial Notes chunk smaller.
 import mammoth from 'mammoth'
+import { STORAGE_KEYS, readJSON, writeJSON, getToken } from '@/utils/storage'
+import { apiFetch } from '@/utils/apiClient'
+import { formatShortDate as formatDate } from '@/utils/date'
 
 // 🚨 请务必替换为你自己刚申请的智谱 API Key
 // The AI API key must only exist on the backend.
@@ -142,8 +145,8 @@ const aiResult = ref({ summary: '', flowCode: '', sequenceCode: '' })
 const currentNote = computed(() => notes.value.find(n => n.id === currentNoteId.value) || null)
 
 onMounted(() => {
-  const saved = localStorage.getItem('my_workspace_notes_v2')
-  if (saved) notes.value = JSON.parse(saved)
+  const saved = readJSON(STORAGE_KEYS.NOTES)
+  if (saved) notes.value = saved
   if (notes.value.length > 0) currentNoteId.value = notes.value[0].id
 })
 
@@ -180,11 +183,7 @@ const handleContentInput = () => {
 }
 const saveNotes = () => {
   if (currentNote.value) currentNote.value.updatedAt = Date.now()
-  localStorage.setItem('my_workspace_notes_v2', JSON.stringify(notes.value))
-}
-const formatDate = (timestamp) => {
-  const date = new Date(timestamp)
-  return `${date.getMonth() + 1}月${date.getDate()}日`
+  writeJSON(STORAGE_KEYS.NOTES, notes.value)
 }
 
 const triggerImport = () => fileInputRef.value.click()
@@ -248,11 +247,11 @@ const generateAI = async () => {
   aiResult.value = { summary: '智谱 AI 正在阅读并分析中...', flowCode: '', sequenceCode: '' }
 
   try {
-		const res = await fetch('/api/ai/notes', {
+		const res = await apiFetch('/api/ai/notes', {
 		  method: 'POST',
 		  headers: {
 			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${localStorage.getItem('userToken') || ''}`
+			'Authorization': `Bearer ${getToken()}`
 		  },
       body: JSON.stringify({ text: plainText })
     })

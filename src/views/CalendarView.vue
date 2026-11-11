@@ -71,6 +71,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { Solar } from 'lunar-javascript'
+import { formatDateKey as formatDate } from '@/utils/date'
 
 // 定义七曜表头（对应：日、一、二、三、四、五、六）
 const weekDays = ['日', '月', '火', '水', '木', '金', '土']
@@ -82,13 +83,6 @@ const currentMonth = ref(now.getMonth() + 1) // 1-12
 // 当前选中的日期字符串 (YYYY-MM-DD)
 const activeDateStr = ref(formatDate(now))
 
-// 格式化日期为 YYYY-MM-DD
-function formatDate(date) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
 
 // 获取选中日期的详细黄历信息
 const selectedDate = computed(() => {

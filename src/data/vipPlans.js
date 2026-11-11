@@ -1,6 +1,11 @@
 // 会员账号（VIP）套餐档位。
 // 金额统一用「分」存整数，避免浮点误差；展示时再换算成元。
 // 规则：月付档 = 每月单价 × 月数；日体验档为固定总价。
+import { formatYuan } from '@/utils/format'
+
+// 继续对外暴露，保持 VipPlanCard.vue 现有导入路径不变
+export { formatYuan }
+
 export const VIP_PLANS = [
   {
     id: '2y',
@@ -52,12 +57,6 @@ export const VIP_PRODUCT = {
   tag: '会员',
   description: '解锁全部会员功能，按月计费，买得越久单价越低。',
   plans: VIP_PLANS
-}
-
-export function formatYuan(cents) {
-  const value = Number(cents)
-  if (!Number.isFinite(value)) return '—'
-  return `¥${(value / 100).toFixed(2)}`
 }
 
 export function getPlan(id) {

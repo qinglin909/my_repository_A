@@ -127,6 +127,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import VipPlanCard from '@/components/VipPlanCard.vue'
+import { formatPrice } from '@/utils/format'
+import { apiFetch, isAbortError } from '@/utils/apiClient'
 
 const products = ref([])
 const keyword = ref('')
@@ -165,7 +167,7 @@ const loadProducts = async (replace = false) => {
       pageSize: String(pageSize),
       q: keyword.value.trim()
     })
-    const response = await fetch(`/api/products?${params}`, { signal: activeRequest.signal })
+    const response = await apiFetch(`/api/products?${params}`, { signal: activeRequest.signal })
     if (!response.ok) throw new Error(`商品接口响应异常 (${response.status})`)
 
     const payload = await response.json()
@@ -179,7 +181,7 @@ const loadProducts = async (replace = false) => {
       : items.length === pageSize
     page.value += 1
   } catch (error) {
-    if (error.name !== 'AbortError') {
+    if (!isAbortError(error)) {
       errorMessage.value = error.message || '商品加载失败，请稍后重试。'
     }
   } finally {
@@ -203,10 +205,6 @@ const safeProductUrl = (value) => {
   }
 }
 
-const formatPrice = (price) => {
-  const amount = Number(price)
-  return Number.isFinite(amount) ? `¥${amount.toFixed(2)}` : '价格待补充'
-}
 
 const hideBrokenImage = (event) => {
   event.target.hidden = true

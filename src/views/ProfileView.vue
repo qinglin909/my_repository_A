@@ -91,6 +91,8 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import ImageUploader from '@/components/ImageUploader.vue'
+import { getToken, clearToken } from '@/utils/storage'
+import { apiFetch } from '@/utils/apiClient'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -126,11 +128,11 @@ const changePassword = async () => {
   }
   passwordLoading.value = true
   try {
-    const token = userStore.token || localStorage.getItem('userToken')
-    const response = await fetch('/api/account/change-password', {
+    const token = userStore.token || getToken()
+    const response = await apiFetch('/api/account/change-password', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
-      body: JSON.stringify({ currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword })
+      token: token || '',
+      body: { currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword }
     })
     const contentType = response.headers.get('content-type') || ''
     if (contentType.includes('text/html')) throw new Error('API 返回了网页而不是 JSON：线上后端尚未部署改密接口，请先更新 API 服务器。')
@@ -139,7 +141,7 @@ const changePassword = async () => {
     if (!response.ok) throw new Error(result.message || '密码修改失败')
     passwordMessage.value = result.message || '密码更新成功。'
     userStore.logout()
-    localStorage.removeItem('userToken')
+    clearToken()
     window.setTimeout(() => {
       closePasswordModal()
       router.replace('/login')

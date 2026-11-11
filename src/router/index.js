@@ -4,6 +4,8 @@ import userRoutes from './modules/user' // 🚨 引入刚才写的模块路由
 import trendsRoutes from './modules/trends'
 import toolsRoutes from './modules/tools'
 import { useUserStore } from '@/stores/user'
+import { clearToken } from '@/utils/storage'
+import { apiFetch } from '@/utils/apiClient'
 
 const routes = [
   { path: '/login', name: 'Login', component: () => import('@/views/LoginView.vue') },
@@ -34,8 +36,8 @@ router.beforeEach(async (to) => {
   if (userStore.isLoggedIn && !sessionChecked) {
     sessionChecked = true
     try {
-      const response = await fetch('/api/me', {
-        headers: { Authorization: `Bearer ${userStore.token}` },
+      const response = await apiFetch('/api/me', {
+        token: userStore.token,
         signal: AbortSignal.timeout(5000)
       })
       if (response.ok) {
@@ -43,7 +45,7 @@ router.beforeEach(async (to) => {
       } else if (response.status === 401 || response.status === 403) {
         // token 失效：清掉本地登录态，回到登录页
         userStore.logout()
-        localStorage.removeItem('userToken')
+        clearToken()
       }
     } catch {
       // 网络异常时保留本地登录态，不强制退出

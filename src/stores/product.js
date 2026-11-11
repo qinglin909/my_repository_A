@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { apiFetch } from '@/utils/apiClient'
 
 export const useProductStore = defineStore('product', () => {
   const allProducts = ref([])
@@ -12,9 +13,7 @@ export const useProductStore = defineStore('product', () => {
     loading.value = true
 
     try {
-      const res = await fetch(
-        `/api/products?page=${page.value}&pageSize=${pageSize}`
-      )
+      const res = await apiFetch(`/api/products?page=${page.value}&pageSize=${pageSize}`)
       const list = await res.json()
       page.value += 1
 

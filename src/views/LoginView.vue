@@ -2,6 +2,8 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { setToken, clearToken } from '@/utils/storage'
+import { apiFetch } from '@/utils/apiClient'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -117,16 +119,14 @@ const handleSubmit = async () => {
   loading.value = true
   
   try {
-    const res = await fetch('/api/hello', {
+    const res = await apiFetch('/api/hello', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        username: form.username, 
+      body: {
+        username: form.username,
         password: form.password,
         isRegister: mode.value === 1
-      })
-    }).catch(() => {
-      throw new Error('连不上后端服务：本地请先运行 npm run server（端口 3000），线上请检查 /api 代理目标是否可达')
+      },
+      networkErrorMessage: '连不上后端服务：本地请先运行 npm run server（端口 3000），线上请检查 /api 代理目标是否可达'
     })
 
     const text = await res.text()
@@ -158,7 +158,7 @@ const handleSubmit = async () => {
         vip: data.user.vip,
         vipExpiresAt: data.user.vipExpiresAt
       })
-      localStorage.setItem('userToken', data.token)
+      setToken(data.token)
       router.push('/home')
     } else {
       throw new Error('登录异常：未获取到凭证')
@@ -166,7 +166,7 @@ const handleSubmit = async () => {
 
   } catch (err) {
     errorMsg.value = err.message
-    localStorage.removeItem('userToken') 
+    clearToken()
   } finally {
     loading.value = false
   }

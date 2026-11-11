@@ -57,6 +57,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { apiFetch, isAbortError } from '@/utils/apiClient'
 
 const router = useRouter()
 const API_BASE = 'https://60s.3450934729.workers.dev/v2'
@@ -93,7 +94,7 @@ const fetchData = async (platformId, forceRefresh = false) => {
   loading.value = true
   errorMsg.value = ''
   try {
-    const res = await fetch(platform.api, { signal: abortController.signal })
+    const res = await apiFetch(platform.api, { signal: abortController.signal })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const json = await res.json()
     const rawList = (json.data || []).slice(0, 10)
@@ -105,7 +106,7 @@ const fetchData = async (platformId, forceRefresh = false) => {
     cacheData.value[platformId] = parsedList
     currentList.value = parsedList
   } catch (err) {
-    if (err.name === 'AbortError') return
+    if (isAbortError(err)) return
     errorMsg.value = '数据加载失败，请检查网络'
     currentList.value = []
   } finally {
