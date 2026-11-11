@@ -125,6 +125,8 @@ const handleSubmit = async () => {
         password: form.password,
         isRegister: mode.value === 1
       })
+    }).catch(() => {
+      throw new Error('连不上后端服务：本地请先运行 npm run server（端口 3000），线上请检查 /api 代理目标是否可达')
     })
 
     const text = await res.text()
@@ -132,7 +134,14 @@ const handleSubmit = async () => {
     try {
       data = JSON.parse(text)
     } catch (e) {
-      throw new Error('服务器响应异常，请检查后端代码或环境变量')
+      console.error(`[登录] HTTP ${res.status} 返回非 JSON:`, text.slice(0, 200))
+      const isHtml = /^\s*</.test(text)
+      throw new Error(
+        `后端返回的不是 JSON（HTTP ${res.status}）。` +
+        (isHtml
+          ? '收到的是网页/错误页，通常是 /api 代理失败被转发到首页，或后端未部署新代码。'
+          : '响应为空或格式异常，通常是代理超时、目标不可达或后端正在重启。')
+      )
     }
 
     if (!res.ok) throw new Error(data.message || '操作失败')

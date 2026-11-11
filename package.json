@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "node local_server.js",
+    "start": "node local_server.js",
     "build": "vite build",
     "preview": "vite preview"
   },
