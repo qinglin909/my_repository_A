@@ -158,38 +158,16 @@ const RULE_KEYS = { tk: 'Tk', bk: 'Bk', zk: 'Zk' }
 /**
  * 生成「这个换算分是怎么来的」的可读推导，页面与 Excel 共用。
  */
-export const describeConversion = (result, rawRule, options = {}) => {
+export const describeConversion = (result) => {
   if (!result) return '—'
-  const rule = normalizeRule(rawRule)
-  const diffs = ruleDiffs(rule)
-  const ending = `= ${result.converted.toFixed(2)} → ${result.rounded} 分`
+  const trim = (value) => Number(value).toFixed(2).replace(/\.00$/, '')
+  const diff = Number(result.diff)
 
-  if (result.segment === 'below-zk') {
-    return `原始分 ${result.score} 低于专科线 ${rule.currZk}，按口径不做换算，保持 ${result.rounded} 分。`
-  }
+  // 专科线以下不换算，只给原始分
+  if (result.segment === 'below-zk') return trim(result.score)
 
-  if (result.segment === 'tk') {
-    if (result.topAdjusted) {
-      const maxScore = Number(options.maxScore)
-      const topDiff = Number(options.targetMaxScore) - maxScore
-      return `原始分 ${result.score} 在特控线 ${rule.currTk} 以上；已启用最高分校准：本次最高分 ${maxScore} → 往年 ${options.targetMaxScore}，最高分线差 ${signed(topDiff)}，` +
-        `与特控线线差 ${signed(diffs.tk)} 之间过渡，本次线差 ${signed(result.diff)}；` +
-        `换算分 = ${result.score} ${op(result.diff)} ${ending}。`
-    }
-    return `原始分 ${result.score} 在特控线 ${rule.currTk} 以上，统一使用特控线线差 ${signed(diffs.tk)}（${rule.lastTk} − ${rule.currTk}）；` +
-      `换算分 = ${result.score} ${op(diffs.tk)} ${ending}。`
-  }
-
-  const upperKey = result.segment === 'tk-bk' ? 'tk' : 'bk'
-  const lowerKey = result.segment === 'tk-bk' ? 'bk' : 'zk'
-  const upperScore = rule[`curr${RULE_KEYS[upperKey]}`]
-  const lowerScore = rule[`curr${RULE_KEYS[lowerKey]}`]
-  const upperDiff = diffs[upperKey]
-  const lowerDiff = diffs[lowerKey]
-  const progress = Number(result.progress || 0).toFixed(4)
-
-  return `原始分 ${result.score} 在${LINE_LABELS[lowerKey]} ${lowerScore} 与${LINE_LABELS[upperKey]} ${upperScore} 之间，按两线之间的线差过渡得线差 ${signed(result.diff)}；` +
-    `换算分 = ${result.score} ${op(result.diff)} ${ending}。`
+  const sign = diff < 0 ? '−' : '+'
+  return `${trim(result.score)} ${sign} ${trim(Math.abs(diff))} = ${trim(result.converted)} → ${result.rounded}`
 }
 
 export const SEGMENT_LABELS = {
