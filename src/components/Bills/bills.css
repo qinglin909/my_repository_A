@@ -1,0 +1,533 @@
+/* 月度收支登记：页面样式（非 scoped，统一以 .bills-page 命名空间限定） */
+
+.bills-page {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 28px 20px 72px;
+  color: var(--text-main);
+}
+
+.bills-page .page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.bills-page .page-head h1 {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.bills-page .page-head p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.bills-page .head-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.bills-page .ghost-btn,
+.bills-page .solid-btn {
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: #fff;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: transform 0.2s var(--smooth-ease), box-shadow 0.2s var(--smooth-ease), opacity 0.2s;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.bills-page .ghost-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.bills-page .ghost-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bills-page .solid-btn {
+  background: var(--primary-color, #9b2028);
+  border-color: transparent;
+  color: #fff;
+}
+
+.bills-page .solid-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(155, 32, 40, 0.25);
+}
+
+.bills-page .solid-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.bills-page .error-bar {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(239, 68, 68, 0.08);
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.bills-page .login-prompt {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 26px;
+}
+
+.bills-page .prompt-icon {
+  font-size: 40px;
+}
+
+.bills-page .login-prompt h2 {
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.bills-page .login-prompt p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+/* ---------- 汇总卡 ---------- */
+.bills-page .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.bills-page .summary-card {
+  padding: 16px 18px;
+  border-top: 3px solid transparent;
+}
+
+.bills-page .summary-card.tone-income { border-top-color: #2fb380; }
+.bills-page .summary-card.tone-expense { border-top-color: #c2454d; }
+.bills-page .summary-card.tone-balance { border-top-color: #3a5a8c; }
+.bills-page .summary-card.tone-daily { border-top-color: #d8a24e; }
+
+.bills-page .summary-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.bills-page .summary-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.bills-page .summary-card small {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ---------- 表单 + 列表 ---------- */
+.bills-page .work-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.bills-page .bill-form {
+  padding: 20px;
+  align-self: start;
+}
+
+.bills-page .form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.bills-page .form-head h2 {
+  font-size: 16px;
+}
+
+.bills-page .text-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.bills-page .type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.bills-page .type-btn {
+  padding: 9px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s var(--smooth-ease);
+}
+
+.bills-page .type-btn.expense.active {
+  background: rgba(194, 69, 77, 0.1);
+  border-color: #c2454d;
+  color: #9b2028;
+  font-weight: 700;
+}
+
+.bills-page .type-btn.income.active {
+  background: rgba(47, 179, 128, 0.1);
+  border-color: #2fb380;
+  color: #1d8f63;
+  font-weight: 700;
+}
+
+.bills-page .field {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.bills-page .field > span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+
+.bills-page .field input,
+.bills-page .field select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  font-size: 14px;
+  background: #fff;
+  color: var(--text-main);
+}
+
+.bills-page .field-row {
+  display: grid;
+  grid-template-columns: 1fr 96px;
+  gap: 10px;
+}
+
+.bills-page .quick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.bills-page .chips-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.bills-page .chip {
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px dashed #c2454d;
+  color: #9b2028;
+  background: rgba(194, 69, 77, 0.05);
+  cursor: pointer;
+}
+
+.bills-page .chip:hover {
+  background: rgba(194, 69, 77, 0.12);
+}
+
+.bills-page .form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.bills-page .tip-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ---------- 列表 ---------- */
+.bills-page .bill-list {
+  padding: 20px;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+}
+
+.bills-page .list-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.bills-page .list-tab {
+  padding: 8px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: #fff;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.bills-page .list-tab em {
+  font-style: normal;
+  margin-left: 4px;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.bills-page .list-tab.active {
+  border-color: var(--primary-color, #9b2028);
+  color: var(--primary-color, #9b2028);
+  font-weight: 700;
+  background: rgba(155, 32, 40, 0.05);
+}
+
+.bills-page .list-body {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+
+.bills-page .list-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 24px 0;
+}
+
+.bills-page .bill-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.bills-page .bill-item:last-child {
+  border-bottom: none;
+}
+
+.bills-page .bill-item.muted {
+  opacity: 0.55;
+}
+
+.bills-page .item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bills-page .item-name {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bills-page .paused-tag {
+  font-size: 11px;
+  font-weight: 400;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary);
+}
+
+.bills-page .item-meta,
+.bills-page .item-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bills-page .item-amount {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bills-page .item-amount.expense { color: #c2454d; }
+.bills-page .item-amount.income { color: #1d8f63; }
+
+.bills-page .item-ops {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.bills-page .op-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.bills-page .op-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.bills-page .op-btn.danger:hover {
+  background: rgba(194, 69, 77, 0.1);
+}
+
+.bills-page .list-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 1px dashed var(--border-color);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.bills-page .list-foot strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bills-page .list-foot strong.expense { color: #c2454d; }
+.bills-page .list-foot strong.income { color: #1d8f63; }
+
+/* 过渡动效 */
+.bills-page .bill-enter-active,
+.bills-page .bill-leave-active {
+  transition: opacity 0.25s var(--smooth-ease), transform 0.25s var(--smooth-ease);
+}
+
+.bills-page .bill-enter-from,
+.bills-page .bill-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.bills-page .bill-move {
+  transition: transform 0.25s var(--smooth-ease);
+}
+
+/* ---------- 图表 ---------- */
+.bills-page .chart-card {
+  padding: 20px;
+}
+
+.bills-page .chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bills-page .chart-head h2 {
+  font-size: 16px;
+}
+
+.bills-page .chart-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.bills-page .chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.bills-page .chart-block {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #fbfbfb;
+  border-radius: var(--radius-lg);
+  padding: 8px;
+}
+
+.bills-page .chart-svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 900px) {
+  .bills-page .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bills-page .work-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bills-page .chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .bills-page {
+    padding: 20px 14px 56px;
+  }
+
+  .bills-page .page-head {
+    flex-direction: column;
+  }
+
+  .bills-page .head-actions {
+    width: 100%;
+  }
+
+  .bills-page .head-actions button {
+    flex: 1;
+  }
+
+  .bills-page .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
