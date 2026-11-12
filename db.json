@@ -58,5 +58,90 @@
       ]
     }
   ],
-  "bills": []
+  "bills": [
+    {
+      "id": "1794475369372-97oi16",
+      "owner": "root",
+      "name": "宽带",
+      "category": "通讯网络",
+      "type": "expense",
+      "amount": 79,
+      "dayOfMonth": 1,
+      "note": "",
+      "active": true,
+      "createdAt": 1794475369372
+    },
+    {
+      "id": "1794475370291-745ojz",
+      "owner": "root",
+      "name": "电话卡",
+      "category": "通讯网络",
+      "type": "expense",
+      "amount": 29,
+      "dayOfMonth": 5,
+      "note": "",
+      "active": true,
+      "createdAt": 1794475370291
+    },
+    {
+      "id": "1794475405212-hl2j6r",
+      "owner": "root",
+      "name": "房租",
+      "category": "居住房租",
+      "type": "expense",
+      "amount": 1300,
+      "dayOfMonth": 1,
+      "note": "",
+      "active": true,
+      "createdAt": 1794475405212
+    },
+    {
+      "id": "1794475417687-0dufwc",
+      "owner": "root",
+      "name": "工资",
+      "category": "主职收入",
+      "type": "income",
+      "amount": 6000,
+      "dayOfMonth": 1,
+      "note": "",
+      "active": true,
+      "createdAt": 1794475417687
+    },
+    {
+      "id": "1794475530440-71o5np",
+      "owner": "root",
+      "name": "社保",
+      "category": "保险",
+      "type": "expense",
+      "amount": 500,
+      "dayOfMonth": 1,
+      "note": "",
+      "active": true,
+      "createdAt": 1794475530440
+    },
+    {
+      "id": "1794475640201-sk94f9",
+      "owner": "root",
+      "name": "吃饭",
+      "category": "生活缴费",
+      "type": "expense",
+      "amount": 1250,
+      "dayOfMonth": 1,
+      "note": "",
+      "active": false,
+      "createdAt": 1794475640201
+    },
+    {
+      "id": "1794475673654-c1e8ua",
+      "owner": "root",
+      "name": "电费、水费",
+      "category": "生活缴费",
+      "type": "expense",
+      "amount": 150,
+      "dayOfMonth": 1,
+      "note": "",
+      "active": true,
+      "createdAt": 1794475673654
+    }
+  ]
 }
