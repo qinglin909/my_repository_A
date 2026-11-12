@@ -57,6 +57,10 @@
                   <span class="item-icon">📝</span>
                   <div class="item-text"><span class="title">随心笔记</span><span class="desc">记录灵感与知识</span></div>
                 </router-link>
+                <router-link to="/formula" class="dropdown-item" active-class="route-active">
+                  <span class="item-icon">🧮</span>
+                  <div class="item-text"><span class="title">公式助手</span><span class="desc">表格公式生成、解释与修错</span></div>
+                </router-link>
                 <router-link to="/knowledge" class="dropdown-item" active-class="route-active">
                   <span class="item-icon">🧠</span>
                   <div class="item-text"><span class="title">知识向量库</span><span class="desc">存资料、分块并检索原文</span></div>

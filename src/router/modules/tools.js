@@ -12,6 +12,12 @@ export default [
     meta: { title: '随心笔记' }
   },
   {
+    path: 'formula',
+    name: 'Formula',
+    component: () => import('@/views/FormulaView.vue'),
+    meta: { title: '公式助手' }
+  },
+  {
     path: 'knowledge',
     name: 'Knowledge',
     component: () => import('@/views/KnowledgeView.vue'),

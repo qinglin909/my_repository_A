@@ -160,6 +160,7 @@ const allTools = [
   { path: '/character', mark: '字', name: '繁体解字', description: '看字形、字义与繁简差异', tone: 'tone-orange' },
   { path: '/trends', mark: '闻', name: '全网热榜', description: '浏览各平台热点', tone: 'tone-red' },
   { path: '/products', mark: '物', name: '商品目录', description: '搜索与整理商品', tone: 'tone-cyan' },
+  { path: '/formula', mark: '式', name: '公式助手', description: '生成、解释、修错表格公式', tone: 'tone-cyan' },
   { path: '/navigator', mark: '藏', name: '宝藏导航', description: '打开常用网站与收藏', tone: 'tone-gold', vipOnly: true },
   { path: '/profile', mark: '身', name: '个人中心', description: '管理账号资料与会员', tone: 'tone-slate' }
 ]

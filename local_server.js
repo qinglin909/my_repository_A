@@ -153,6 +153,108 @@ app.get('/api/products', async (req, res) => {
 });
 
 // ==========================================
+// 4.5 公式助手（Excel / Google Sheets 公式生成、解释、修复）
+// ==========================================
+// 大模型走 OpenAI 兼容网关，密钥只留在服务端，前端永远拿不到
+const LLM_BASE = process.env.QINIU_OPENAI_BASE_URL || 'https://api.qnaigc.com/v1';
+const LLM_KEY = process.env.QINIU_API_KEY || process.env['api-key'] || '';
+const LLM_MODEL = process.env.QINIU_CHAT_MODEL || 'qwen/qwen3.8-flash-next';
+
+const formulaLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: '请求过于频繁，请稍后再试' }
+});
+
+const FORMULA_TASKS = {
+  generate: '用户描述想要达成的效果（可能不知道用哪个函数），请给出可直接粘贴使用的公式。',
+  explain: '用户给出一个已有公式（或一段公式搭配他的目标），请逐步解释它在做什么。',
+  fix: '用户给出一个报错或结果不对的公式，并描述了期望结果，请定位问题并给出修正后的公式。'
+};
+
+app.post('/api/formula', formulaLimiter, async (req, res) => {
+  const { task = 'generate', input = '', target = 'Excel' } = req.body || {};
+  if (!FORMULA_TASKS[task]) return res.status(400).json({ message: '未知的任务类型' });
+  const text = String(input).trim();
+  if (!text) return res.status(400).json({ message: '请先描述你的需求或粘贴公式' });
+  if (text.length > 2000) return res.status(400).json({ message: '内容过长，请精简到 2000 字以内' });
+  if (!LLM_KEY) return res.status(503).json({ message: '服务端未配置大模型密钥' });
+
+  const systemPrompt = [
+    '你是电子表格公式专家，精通 Excel、WPS 与 Google Sheets。',
+    FORMULA_TASKS[task],
+    `目标软件：${target}（函数名与语法请贴合该软件；三者通用时可用 IFERROR/XLOOKUP 等较新函数，但要提醒旧版本兼容性）。`,
+    '回答必须是一个 JSON 对象，不要加 markdown 代码块、不要任何额外文字，格式：',
+    '{"formula":"最终公式（纯文本，不带=号也行）","explanation":"分步解释，2-4 句，说明每个部分的作用","example":"一个具体使用示例，含假设的单元格与预期结果","tips":["注意事项1","注意事项2"]}',
+    '若信息不足以确定公式，也要给出最合理的通用写法，并在 tips 里说明需要用户确认什么。'
+  ].join('\n');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30000);
+  try {
+    const upstream = await fetch(`${LLM_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LLM_KEY}` },
+      body: JSON.stringify({
+        model: LLM_MODEL,
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: text }
+        ]
+      }),
+      signal: controller.signal
+    });
+
+    if (!upstream.ok) {
+      const detail = await upstream.text().catch(() => '');
+      console.error('公式助手上游失败:', upstream.status, detail.slice(0, 200));
+      return res.status(502).json({ message: '大模型服务暂时不可用，请稍后重试' });
+    }
+
+    const payload = await upstream.json();
+    const raw = payload?.choices?.[0]?.message?.content || '';
+    const parsed = extractJson(raw);
+    if (!parsed || !parsed.formula) {
+      console.error('公式助手解析失败:', raw.slice(0, 200));
+      return res.status(502).json({ message: '模型返回格式异常，请重试' });
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        formula: String(parsed.formula || '').trim(),
+        explanation: String(parsed.explanation || '').trim(),
+        example: String(parsed.example || '').trim(),
+        tips: Array.isArray(parsed.tips) ? parsed.tips.map(String).slice(0, 4) : []
+      }
+    });
+  } catch (error) {
+    console.error('公式助手调用异常:', error.name === 'AbortError' ? '超时' : error.message);
+    res.status(error.name === 'AbortError' ? 504 : 500).json({
+      message: error.name === 'AbortError' ? '生成超时，请重试或简化描述' : '生成失败，请稍后重试'
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+});
+
+// 从模型输出里抠出第一个完整 JSON 对象：兼容 ```json 包裹、前后多余文字
+function extractJson(text) {
+  const source = String(text).replace(/```(?:json)?/gi, '');
+  const start = source.indexOf('{');
+  const end = source.lastIndexOf('}');
+  if (start === -1 || end <= start) return null;
+  try {
+    return JSON.parse(source.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+}
+
+// ==========================================
 // 5. 健康检查 & 错误处理
 // ==========================================
 app.get('/api/health', (req, res) => {

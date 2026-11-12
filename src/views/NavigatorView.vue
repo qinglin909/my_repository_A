@@ -43,11 +43,14 @@
       <div v-for="category in section.categories" :key="category.title" class="category-group">
         <h3 class="category-title">{{ category.title }}</h3>
         <div class="links-grid">
-          <a
+          <!-- 站外链接新窗口打开；站内工具（site.internal）走路由跳转 -->
+          <component
+            :is="site.internal ? 'router-link' : 'a'"
             v-for="site in category.sites"
             :key="site.name"
-            :href="site.url"
-            target="_blank"
+            :to="site.internal ? site.url : undefined"
+            :href="site.internal ? undefined : site.url"
+            :target="site.internal ? undefined : '_blank'"
             class="site-card app-card hover-lift"
           >
             <div class="site-icon">{{ site.icon }}</div>
@@ -55,7 +58,7 @@
               <h3 class="site-name">{{ site.name }}</h3>
               <p class="site-desc">{{ site.desc }}</p>
             </div>
-          </a>
+          </component>
         </div>
       </div>
     </section>
@@ -173,6 +176,13 @@ const navigatorData = [
           { name: '图片转 Base64', icon: '🖼️', desc: '图片转 64 编码工具', url: 'https://www.jyshare.com/front-end/59/' },
           { name: '随机 GUID 生成', icon: '🆔', desc: '随机生成用户 ID', url: 'http://tool.pfan.cn/guidgen' },
           { name: 'PDF24 工具', icon: '📄', desc: '免费好用的 PDF 处理神器', url: 'https://tools.pdf24.org/zh/merge-pdf#s=1791965135442' }
+        ]
+      },
+      {
+        title: '表格与公式',
+        sites: [
+          { name: 'FormulaEase', icon: '🧮', desc: 'Excel 公式生成、解释与报错修复', url: 'https://formulaease.com/' },
+          { name: '公式助手（本站）', icon: '✨', desc: '用 AI 写公式，支持 Excel/WPS/表格', url: '/formula', internal: true }
         ]
       }
     ]
