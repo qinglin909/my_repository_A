@@ -18,6 +18,12 @@ export default [
     meta: { title: '公式助手' }
   },
   {
+    path: 'bills',
+    name: 'Bills',
+    component: () => import('@/views/BillsView.vue'),
+    meta: { title: '月度收支登记' }
+  },
+  {
     path: 'knowledge',
     name: 'Knowledge',
     component: () => import('@/views/KnowledgeView.vue'),

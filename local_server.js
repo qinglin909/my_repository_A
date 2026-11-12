@@ -255,6 +255,89 @@ function extractJson(text) {
 }
 
 // ==========================================
+// 4.5 月度固定收支登记（宽带、话费、订阅等；按登录用户隔离）
+// ==========================================
+db.data.bills ||= [];
+console.log('💰 收支登记集合已就绪，当前条数:', db.data.bills.length);
+
+const BILL_TYPES = ['expense', 'income'];
+
+function sanitizeBill(body = {}) {
+  const name = String(body.name || '').trim();
+  const category = String(body.category || '').trim();
+  const type = BILL_TYPES.includes(body.type) ? body.type : 'expense';
+  const amount = Number(body.amount);
+  const dayOfMonth = Number.parseInt(body.dayOfMonth, 10);
+  const note = String(body.note || '').trim().slice(0, 200);
+
+  if (!name || name.length > 40) return { error: '请填写名称（40 字以内）' };
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 10000000) return { error: '金额需为大于 0 的数字' };
+  if (!category) return { error: '请选择类别' };
+  if (Number.isNaN(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) return { error: '扣费日需为 1-31' };
+
+  return {
+    value: {
+      name,
+      category,
+      type,
+      amount: Math.round(amount * 100) / 100,
+      dayOfMonth,
+      note,
+      active: body.active !== false
+    }
+  };
+}
+
+function findOwnBill(req) {
+  const id = String(req.params.id || '');
+  return (db.data.bills || []).find((bill) => String(bill.id) === id && bill.owner === req.user.username);
+}
+
+app.get('/api/bills', authenticateToken, async (req, res) => {
+  const list = (db.data.bills || []).filter((bill) => bill.owner === req.user.username);
+  res.json({
+    message: 'ok',
+    data: list.map(({ owner, ...rest }) => rest)
+  });
+});
+
+app.post('/api/bills', authenticateToken, async (req, res) => {
+  const { error, value } = sanitizeBill(req.body);
+  if (error) return res.status(400).json({ message: error });
+
+  const bill = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    owner: req.user.username,
+    ...value,
+    createdAt: Date.now()
+  };
+  db.data.bills.push(bill);
+  await db.write();
+  res.status(201).json({ message: '已登记', data: { ...bill, owner: undefined } });
+});
+
+app.put('/api/bills/:id', authenticateToken, async (req, res) => {
+  const bill = findOwnBill(req);
+  if (!bill) return res.status(404).json({ message: '找不到这条记录' });
+
+  const { error, value } = sanitizeBill({ ...bill, ...req.body });
+  if (error) return res.status(400).json({ message: error });
+
+  Object.assign(bill, value);
+  await db.write();
+  res.json({ message: '已更新', data: { ...bill, owner: undefined } });
+});
+
+app.delete('/api/bills/:id', authenticateToken, async (req, res) => {
+  const bill = findOwnBill(req);
+  if (!bill) return res.status(404).json({ message: '找不到这条记录' });
+
+  db.data.bills = db.data.bills.filter((item) => item !== bill);
+  await db.write();
+  res.json({ message: '已删除' });
+});
+
+// ==========================================
 // 5. 健康检查 & 错误处理
 // ==========================================
 app.get('/api/health', (req, res) => {

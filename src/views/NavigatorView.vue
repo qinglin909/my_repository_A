@@ -184,6 +184,12 @@ const navigatorData = [
           { name: 'FormulaEase', icon: '🧮', desc: 'Excel 公式生成、解释与报错修复', url: 'https://formulaease.com/' },
           { name: '公式助手（本站）', icon: '✨', desc: '用 AI 写公式，支持 Excel/WPS/表格', url: '/formula', internal: true }
         ]
+      },
+      {
+        title: '生活与记账',
+        sites: [
+          { name: '月度收支登记（本站）', icon: '💰', desc: '固定支出与收入登记，出图导出', url: '/bills', internal: true }
+        ]
       }
     ]
   },
