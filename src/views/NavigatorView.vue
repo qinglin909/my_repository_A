@@ -14,25 +14,54 @@
       </div>
     </header>
 
-    <!-- 上半部分：分类导航区 -->
-    <div v-for="category in filteredData" :key="category.title" class="category-section">
-      <h2 class="category-title">{{ category.title }}</h2>
-      
-      <div class="links-grid">
-        <a 
-          v-for="site in category.sites" 
-          :key="site.name" 
-          :href="site.url" 
-          target="_blank"
-          class="site-card app-card hover-lift"
-        >
-          <div class="site-icon">{{ site.icon }}</div>
-          <div class="site-info">
-            <h3 class="site-name">{{ site.name }}</h3>
-            <p class="site-desc">{{ site.desc }}</p>
-          </div>
-        </a>
+    <!-- 分类 tab：一键切换分区，不用长滚 -->
+    <nav class="cat-tabs" role="tablist" aria-label="导航分类">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        type="button"
+        role="tab"
+        :aria-selected="activeTab === tab.key"
+        class="cat-tab"
+        :class="{ active: activeTab === tab.key }"
+        @click="activeTab = tab.key"
+      >
+        <span class="tab-icon">{{ tab.icon }}</span>
+        <span>{{ tab.label }}</span>
+        <em v-if="tab.key !== 'all'">{{ siteCountOf(tab.key) }}</em>
+      </button>
+    </nav>
+
+    <!-- 分类导航区：大类 → 子分类 → 站点 -->
+    <section v-for="section in filteredSections" :key="section.key" class="category-section">
+      <h2 class="section-title">
+        <span class="section-icon">{{ section.icon }}</span>
+        {{ section.title }}
+        <span class="section-count">{{ siteCountOf(section) }} 个站点</span>
+      </h2>
+
+      <div v-for="category in section.categories" :key="category.title" class="category-group">
+        <h3 class="category-title">{{ category.title }}</h3>
+        <div class="links-grid">
+          <a
+            v-for="site in category.sites"
+            :key="site.name"
+            :href="site.url"
+            target="_blank"
+            class="site-card app-card hover-lift"
+          >
+            <div class="site-icon">{{ site.icon }}</div>
+            <div class="site-info">
+              <h3 class="site-name">{{ site.name }}</h3>
+              <p class="site-desc">{{ site.desc }}</p>
+            </div>
+          </a>
+        </div>
       </div>
+    </section>
+
+    <div v-if="!filteredSections.length" class="empty-nav app-card">
+      没有匹配的站点，换个关键词试试。
     </div>
 
     <!-- 下半部分：秘密管理箱 -->
@@ -109,51 +138,98 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 const keyword = ref('')
 
 // =========================================
-// 1. 导航数据（已去掉你不需要的项）
+// 1. 导航数据：三大分区 → 子分类 → 站点
 // =========================================
 const navigatorData = [
   {
-    title: '💼 工作专区 - 优途核心系统',
-    sites: [
-      { name: '新订单管理系统', icon: '🛒', desc: '优途新订单管理系统使用指引', url: 'http://qecode.uwii.com.cn/' },
-      { name: '优途后台系统', icon: '⚙️', desc: 'new wcii20 优途后台', url: 'http://newwcii20.ytowin.com/02ko5qp6/Admin/Default' },
-      { name: '后台管理平台', icon: '💻', desc: '优途后台管理平台', url: 'https://admin.iutowin.com/login' }
+    key: 'work',
+    icon: '💼',
+    title: '工作专区',
+    categories: [
+      {
+        title: '优途核心系统',
+        sites: [
+          { name: '新订单管理系统', icon: '🛒', desc: '优途新订单管理系统使用指引', url: 'http://qecode.uwii.com.cn/' },
+          { name: '优途后台系统', icon: '⚙️', desc: 'new wcii20 优途后台', url: 'http://newwcii20.ytowin.com/02ko5qp6/Admin/Default' },
+          { name: '后台管理平台', icon: '💻', desc: '优途后台管理平台', url: 'https://admin.iutowin.com/login' }
+        ]
+      },
+      {
+        title: '业务与支付',
+        sites: [
+          { name: '微信商户平台', icon: '💳', desc: '处理投诉与支付业务', url: 'https://pay.weixin.qq.com/' }
+        ]
+      }
     ]
   },
   {
-    title: '💼 工作专区 - 业务处理',
-    sites: [
-      { name: '微信商户平台', icon: '💳', desc: '处理投诉与支付业务', url: 'https://pay.weixin.qq.com/' },
-      { name: '图片转 Base64', icon: '🖼️', desc: '图片转 64 编码工具', url: 'https://www.jyshare.com/front-end/59/' },
-      { name: '随机 GUID 生成', icon: '🆔', desc: '随机生成用户 ID', url: 'http://tool.pfan.cn/guidgen' }
+    key: 'tools',
+    icon: '🛠️',
+    title: '工具箱',
+    categories: [
+      {
+        title: '开发小工具',
+        sites: [
+          { name: '图片转 Base64', icon: '🖼️', desc: '图片转 64 编码工具', url: 'https://www.jyshare.com/front-end/59/' },
+          { name: '随机 GUID 生成', icon: '🆔', desc: '随机生成用户 ID', url: 'http://tool.pfan.cn/guidgen' },
+          { name: 'PDF24 工具', icon: '📄', desc: '免费好用的 PDF 处理神器', url: 'https://tools.pdf24.org/zh/merge-pdf#s=1791965135442' }
+        ]
+      }
     ]
   },
   {
-    title: '🏠 个人专区 - 极客与知识库',
-    sites: [
-      { name: '全栈知识库', icon: '📚', desc: 'Easy-Vibe 开发工具指南', url: 'https://datawhalechina.github.io/easy-vibe/zh-cn/appendix/2-development-tools/ide-basics.html' },
-      { name: '人生指南', icon: '🧭', desc: '如何更好地生活与思考', url: 'https://eternity4719.github.io/HowToLiveBetter/#/e-1-23' },
-      { name: 'PDF24 工具', icon: '📄', desc: '免费好用的 PDF 处理神器', url: 'https://tools.pdf24.org/zh/merge-pdf#s=1791965135442' }
-    ]
-  },
-  {
-    title: '🏠 个人专区 - 网络与资源',
-    sites: [
-      { name: '专属网络', icon: '🚀', desc: '极速稳定的网络节点', url: 'https://hniko.top/#/plan' },
-	  { name: 'ChatGPT', icon: '🤖', desc: '地表最强 AI 对话助手', url: 'https://chatgpt.com/' }
+    key: 'personal',
+    icon: '🏠',
+    title: '个人专区',
+    categories: [
+      {
+        title: 'AI 与网络',
+        sites: [
+          { name: 'ChatGPT', icon: '🤖', desc: '地表最强 AI 对话助手', url: 'https://chatgpt.com/' },
+          { name: '专属网络', icon: '🚀', desc: '极速稳定的网络节点', url: 'https://hniko.top/#/plan' }
+        ]
+      },
+      {
+        title: '学习与生活',
+        sites: [
+          { name: '全栈知识库', icon: '📚', desc: 'Easy-Vibe 开发工具指南', url: 'https://datawhalechina.github.io/easy-vibe/zh-cn/appendix/2-development-tools/ide-basics.html' },
+          { name: '人生指南', icon: '🧭', desc: '如何更好地生活与思考', url: 'https://eternity4719.github.io/HowToLiveBetter/#/e-1-23' }
+        ]
+      }
     ]
   }
 ]
 
-const filteredData = computed(() => {
-  if (!keyword.value.trim()) return navigatorData
-  const kw = keyword.value.toLowerCase()
-  return navigatorData.map(category => {
-    const matchedSites = category.sites.filter(site => 
-      site.name.toLowerCase().includes(kw) || site.desc.toLowerCase().includes(kw)
-    )
-    return { title: category.title, sites: matchedSites }
-  }).filter(category => category.sites.length > 0)
+// =========================================
+// 1.1 分类 tab：只显示所选分区，搜索叠加过滤
+// =========================================
+const activeTab = ref('all')
+const tabs = computed(() => [
+  { key: 'all', icon: '🗂️', label: '全部' },
+  ...navigatorData.map(section => ({ key: section.key, icon: section.icon, label: section.title }))
+])
+const siteCountOf = (target) => {
+  const section = typeof target === 'string' ? navigatorData.find(s => s.key === target) : target
+  return section ? section.categories.reduce((sum, category) => sum + category.sites.length, 0) : 0
+}
+
+const filteredSections = computed(() => {
+  const kw = keyword.value.trim().toLowerCase()
+  return navigatorData
+    .filter(section => activeTab.value === 'all' || activeTab.value === section.key)
+    .map(section => {
+      if (!kw) return section
+      const categories = section.categories
+        .map(category => ({
+          ...category,
+          sites: category.sites.filter(site =>
+            site.name.toLowerCase().includes(kw) || site.desc.toLowerCase().includes(kw)
+          )
+        }))
+        .filter(category => category.sites.length > 0)
+      return { ...section, categories }
+    })
+    .filter(section => section.categories.length > 0)
 })
 
 
@@ -399,8 +475,45 @@ const copySecret = async (text) => {
 .search-box .icon { font-size: 18px; color: #888; margin-right: 10px; }
 .search-box input { border: none; outline: none; background: transparent; font-size: 15px; color: var(--text-main); width: 100%; }
 
-.category-section { margin-bottom: 40px; }
-.category-title { font-size: 20px; font-weight: 700; color: var(--text-main); margin-bottom: 20px; padding-left: 10px; border-left: 4px solid var(--primary-color); }
+/* 分类 tab：切换分区，不用长滚 */
+.cat-tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 32px; }
+.cat-tab {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 18px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-secondary);
+  font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+}
+.cat-tab:hover { border-color: var(--primary-color); color: var(--primary-color); }
+.cat-tab.active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+.cat-tab .tab-icon { font-size: 15px; }
+.cat-tab em {
+  font-style: normal;
+  padding: 1px 8px; border-radius: 999px;
+  background: #f0f4f8; color: var(--text-secondary);
+  font-size: 11px; font-weight: 700;
+}
+.cat-tab.active em { background: rgba(255,255,255,.25); color: #fff; }
+
+.category-section { margin-bottom: 44px; }
+.section-title {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 22px;
+  font-size: 21px; font-weight: 800; color: var(--text-main);
+}
+.section-icon { font-size: 22px; }
+.section-count { margin-left: auto; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.category-group { margin-bottom: 26px; }
+.category-title {
+  font-size: 14.5px; font-weight: 700; color: var(--text-secondary);
+  margin-bottom: 14px; padding-left: 10px;
+  border-left: 3px solid var(--primary-color);
+}
+.empty-nav { text-align: center; padding: 46px 20px; color: var(--text-secondary); font-size: 14px; }
 .links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
 .site-card { display: flex; align-items: center; gap: 16px; padding: 20px; text-decoration: none; background: #ffffff; }
 .site-icon { width: 48px; height: 48px; background: #f0f4f8; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 24px; flex-shrink: 0; }

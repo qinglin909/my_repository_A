@@ -29,11 +29,11 @@
     <template v-if="ctx.state.students.length">
       <div class="table-tools">
         <input v-model="ctx.state.keyword" type="search" placeholder="搜索姓名或班级" aria-label="搜索结果" />
-        <span>共 {{ ctx.state.students.length }} 人，显示 {{ ctx.filteredStudents.length }} 人</span>
+        <span>共 {{ ctx.state.students.length }} 人，筛选后 {{ ctx.filteredStudents.length }} 人</span>
         <label class="toggle"><input v-model="ctx.state.showExplain" type="checkbox" /> 显示计算过程</label>
         <button type="button" class="export-btn" @click="ctx.exportExcel">导出 Excel</button>
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap students-wrap">
         <table class="students">
           <thead>
             <tr>
@@ -53,7 +53,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, index) in ctx.filteredStudents.slice(0, 200)" :key="`${item.name}-${index}`">
+            <tr v-for="(item, index) in visibleRows" :key="`${item.name}-${index}`">
               <td>{{ item.schoolRank || '—' }}</td>
               <td>{{ item.name }}</td>
               <td>{{ item.className || '—' }}</td>
@@ -71,14 +71,44 @@
           </tbody>
         </table>
       </div>
-      <p v-if="ctx.filteredStudents.length > 200" class="empty-hint">表格只显示前 200 条，完整数据请导出 Excel。</p>
+
+      <div class="table-footer">
+        <span>当前显示 <strong>{{ visibleRows.length }}</strong> / {{ ctx.filteredStudents.length }} 条</span>
+        <div v-if="ctx.filteredStudents.length > PAGE_SIZE" class="table-pager">
+          <button v-if="hasMore" type="button" class="load-more-btn" @click="loadMore">
+            加载更多（还有 {{ remaining }} 条）
+          </button>
+          <button v-if="hasMore" type="button" class="ghost" @click="showAll">显示全部</button>
+          <button v-else type="button" class="ghost" @click="collapse">收起，只看前 {{ PAGE_SIZE }} 条</button>
+        </div>
+      </div>
+      <p class="empty-hint">导出 Excel 始终包含全部 {{ ctx.state.students.length }} 条记录，不受当前显示条数影响。</p>
     </template>
   </section>
 </template>
 
 <script setup>
-import { inject } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { SCORE_CONVERTER_KEY } from './constants.js'
 
 const ctx = inject(SCORE_CONVERTER_KEY)
+
+const PAGE_SIZE = 10
+const visibleCount = ref(PAGE_SIZE)
+
+const visibleRows = computed(() => ctx.filteredStudents.slice(0, visibleCount.value))
+const hasMore = computed(() => ctx.filteredStudents.length > visibleCount.value)
+const remaining = computed(() => ctx.filteredStudents.length - visibleCount.value)
+
+const loadMore = () => {
+  visibleCount.value = Math.min(visibleCount.value + PAGE_SIZE, ctx.filteredStudents.length)
+}
+const showAll = () => { visibleCount.value = ctx.filteredStudents.length }
+const collapse = () => { visibleCount.value = PAGE_SIZE }
+
+// 搜索关键词或成绩数据变化时回到首屏，避免停在一个已经不存在的页码上
+watch(
+  () => [ctx.state.keyword, ctx.state.students],
+  () => { visibleCount.value = PAGE_SIZE }
+)
 </script>
