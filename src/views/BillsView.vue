@@ -70,11 +70,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { apiFetch } from '@/utils/apiClient'
 import { useUserStore } from '@/stores/user'
 import { isCloudReady, listRows, upsertRows, deleteRow } from '@/utils/cloudDb'
 import { PALETTE } from '@/components/Bills/constants'
+import { useBillSummary } from '@/composables/bills/useBillSummary'
 import BillsSummary from '@/components/Bills/BillsSummary.vue'
 import BillForm from '@/components/Bills/BillForm.vue'
 import BillList from '@/components/Bills/BillList.vue'
@@ -107,72 +108,10 @@ const recordToRow = (b, id) => ({
 })
 
 /* ---------- 汇总 ---------- */
-const activeRecords = computed(() => records.value.filter((r) => r.active !== false))
-const sumOf = (type) => activeRecords.value
-  .filter((r) => r.type === type)
-  .reduce((sum, r) => sum + Number(r.amount || 0), 0)
-const countOf = (type) => activeRecords.value.filter((r) => r.type === type).length
-
-const incomeTotal = computed(() => sumOf('income'))
-const expenseTotal = computed(() => sumOf('expense'))
-const incomeCount = computed(() => countOf('income'))
-const expenseCount = computed(() => countOf('expense'))
-const balance = computed(() => incomeTotal.value - expenseTotal.value)
-const currentList = computed(() =>
-  records.value.filter((r) => r.type === activeTab.value).sort((a, b) => b.amount - a.amount)
-)
-
-/* ---------- 图表数据 ---------- */
-const expenseByCategory = computed(() => {
-  const map = new Map()
-  for (const r of activeRecords.value) {
-    if (r.type !== 'expense') continue
-    map.set(r.category, (map.get(r.category) || 0) + Number(r.amount || 0))
-  }
-  return [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
-})
-
-const donutSegments = computed(() => {
-  const total = expenseByCategory.value.reduce((sum, seg) => sum + seg.value, 0)
-  if (!total) return []
-
-  const cx = 120
-  const cy = 120
-  const rOuter = 88
-  const rInner = 55
-  const point = (radius, angle) => `${cx + radius * Math.cos(angle)} ${cy + radius * Math.sin(angle)}`
-  let angle = -Math.PI / 2
-
-  return expenseByCategory.value.map((seg) => {
-    const share = seg.value / total
-    // 单一类别独占整圆时拆成两段半环，避免 A 指令 360° 退化不渲染
-    const spans = share >= 0.9999
-      ? [[angle, angle + Math.PI], [angle + Math.PI, angle + Math.PI * 2]]
-      : [[angle, angle + share * Math.PI * 2]]
-    const path = spans.map(([a0, a1]) => {
-      const large = a1 - a0 > Math.PI ? 1 : 0
-      return `M ${point(rOuter, a0)} A ${rOuter} ${rOuter} 0 ${large} 1 ${point(rOuter, a1)} `
-        + `L ${point(rInner, a1)} A ${rInner} ${rInner} 0 ${large} 0 ${point(rInner, a0)} Z`
-    }).join(' ')
-    angle += share * Math.PI * 2
-    return { name: seg.name, value: seg.value, share, path }
-  })
-})
-
-const barRows = computed(() => {
-  const rows = [
-    { label: '月收入', value: incomeTotal.value, color: '#2fb380' },
-    { label: '月支出', value: expenseTotal.value, color: '#c2454d' },
-    { label: '月结余', value: balance.value, color: balance.value >= 0 ? '#3a5a8c' : '#c2454d' }
-  ]
-  const max = Math.max(...rows.map((row) => Math.abs(row.value)), 1)
-  return rows.map((row) => ({
-    ...row,
-    width: Math.max(Math.abs(row.value) / max * 196, row.value ? 4 : 0)
-  }))
-})
-
-/* ---------- 接口 ---------- */
+const {
+  incomeTotal, expenseTotal, incomeCount, expenseCount,
+  balance, currentList, donutSegments, barRows
+} = useBillSummary(records, activeTab)
 async function load() {
   cloudLoading.value = true
   cloudOn.value = await isCloudReady()

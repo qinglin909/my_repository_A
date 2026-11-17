@@ -120,21 +120,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, nextTick } from 'vue'
+import { downloadChartImage as saveChartImage, exportAsMarkdown as downloadMarkdown, exportAsPDF as printNote } from '@/composables/notes/useNoteExports'
 // Mermaid is loaded on demand to keep the initial Notes chunk smaller.
 import mammoth from 'mammoth'
-import { STORAGE_KEYS, readJSON, writeJSON, getToken } from '@/utils/storage'
+import { getToken } from '@/utils/storage'
 import { apiFetch } from '@/utils/apiClient'
 import { formatShortDate as formatDate } from '@/utils/date'
-import { isCloudReady, listRows, upsertRows, deleteRow } from '@/utils/cloudDb'
+import { useNotes } from '@/composables/notes/useNotes'
 
 // 🚨 请务必替换为你自己刚申请的智谱 API Key
 // The AI API key must only exist on the backend.
 
 
 
-const notes = ref([])
-const currentNoteId = ref(null)
+const { notes, currentNoteId, currentNote, cloudOn, saveNotes, createNote, deleteNote, selectNote } = useNotes()
 const editorRef = ref(null)
 const mermaidRef = ref(null)
 const chartWrapperRef = ref(null)
@@ -144,62 +144,7 @@ const showAIPanel = ref(false)
 const aiLoading = ref(false)
 const currentChart = ref('flow')
 const aiResult = ref({ summary: '', flowCode: '', sequenceCode: '' })
-const currentNote = computed(() => notes.value.find(n => n.id === currentNoteId.value) || null)
-const cloudOn = ref(false)
-let saveTimer = null
 
-// 云端行 -> 本地笔记对象
-const rowToNote = (r) => ({ id: r.id, title: r.title, content: r.content, updatedAt: r.updated_at_ms || 0 })
-
-async function loadNotes() {
-  const ready = await isCloudReady()
-  cloudOn.value = ready
-  if (ready) {
-    const res = await listRows('notes')
-    if (res.ok && Array.isArray(res.data)) {
-      notes.value = res.data.map(rowToNote).sort((a, b) => b.updatedAt - a.updatedAt)
-    } else {
-      // 云端读取失败则回退本地
-      const saved = readJSON(STORAGE_KEYS.NOTES)
-      if (saved) notes.value = saved
-    }
-  } else {
-    const saved = readJSON(STORAGE_KEYS.NOTES)
-    if (saved) notes.value = saved
-  }
-  if (notes.value.length > 0) currentNoteId.value = notes.value[0].id
-}
-
-onMounted(() => {
-  loadNotes()
-  window.addEventListener('cloud-auth-changed', loadNotes)
-})
-onUnmounted(() => {
-  window.removeEventListener('cloud-auth-changed', loadNotes)
-  if (saveTimer) clearTimeout(saveTimer)
-})
-
-const createNote = () => {
-  const newNote = { id: Date.now(), title: '无标题文档', content: '<p><br></p>', updatedAt: Date.now() }
-  notes.value.unshift(newNote)
-  currentNoteId.value = newNote.id
-  saveNotes()
-}
-
-const deleteNote = (id) => {
-  if (confirm('确定要删除这篇文档吗？删除后不可恢复。')) {
-    notes.value = notes.value.filter(n => n.id !== id)
-    if (currentNoteId.value === id && notes.value.length > 0) {
-      currentNoteId.value = notes.value[0].id
-    } else if (notes.value.length === 0) {
-      currentNoteId.value = null
-    }
-    saveNotes()
-    if (cloudOn.value) deleteRow('notes', String(id))
-  }
-}
-
-const selectNote = (id) => { currentNoteId.value = id }
 const formatDoc = (cmd, value = null) => {
   if (editorRef.value) editorRef.value.focus()
   document.execCommand(cmd, false, value)
@@ -211,24 +156,6 @@ const handleContentInput = () => {
     saveNotes()
   }
 }
-const saveNotes = () => {
-  if (currentNote.value) currentNote.value.updatedAt = Date.now()
-  // 永远写本地：即使云同步失败也有兜底，且离线可用
-  writeJSON(STORAGE_KEYS.NOTES, notes.value)
-  if (!cloudOn.value) return
-  // 防抖：编辑器连续输入时合并成一次云端写入
-  if (saveTimer) clearTimeout(saveTimer)
-  saveTimer = setTimeout(async () => {
-    const rows = notes.value.map(n => ({
-      id: String(n.id),
-      title: n.title || '',
-      content: n.content || '',
-      updated_at_ms: n.updatedAt || 0
-    }))
-    await upsertRows('notes', rows, { onConflict: 'id' })
-  }, 600)
-}
-
 const triggerImport = () => fileInputRef.value.click()
 
 const handleBatchWordImport = async (event) => {
@@ -350,70 +277,10 @@ const renderMermaid = async () => {
   }
 }
 
-const downloadChartImage = () => {
-  if (!mermaidRef.value) return
-  const svgElement = mermaidRef.value.querySelector('svg')
-  if (!svgElement) return
+const downloadChartImage = () => saveChartImage(mermaidRef.value, currentChart.value)
 
-  const bbox = svgElement.getBoundingClientRect()
-  const width = bbox.width || 800
-  const height = bbox.height || 600
-
-  const svgString = new XMLSerializer().serializeToString(svgElement)
-  const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
-  const url = URL.createObjectURL(svgBlob)
-
-  const canvas = document.createElement('canvas')
-  const scale = 2
-  canvas.width = width * scale
-  canvas.height = height * scale
-  
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.scale(scale, scale)
-
-  const img = new Image()
-  img.onload = () => {
-    ctx.drawImage(img, 0, 0, width, height)
-    URL.revokeObjectURL(url)
-    const pngUrl = canvas.toDataURL('image/png')
-    const a = document.createElement('a')
-    a.href = pngUrl
-    a.download = `${currentChart.value === 'flow' ? '流程图' : '时序图'}_${Date.now()}.png`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-  }
-  img.src = url
-}
-
-const exportAsPDF = () => window.print()
-
-const exportAsMarkdown = () => {
-  if (!currentNote.value || !editorRef.value) return
-  let text = editorRef.value.innerHTML
-  text = text.replace(/<br\s*\/?>/gi, '\n')
-             .replace(/<\/p>/gi, '\n\n')
-             .replace(/<h[1-6]>/gi, (match) => {
-                const level = match.match(/h([1-6])/)[1]
-                return '#'.repeat(Number(level)) + ' '
-             })
-             .replace(/<\/h[1-6]>/gi, '\n\n')
-             .replace(/<[^>]+>/g, '')
-             .replace(/&nbsp;/g, ' ')
-  
-  const mdContent = `# ${currentNote.value.title}\n\n${text}`
-  const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${currentNote.value.title || '未命名文档'}.md`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
+const exportAsPDF = printNote
+const exportAsMarkdown = () => downloadMarkdown(currentNote.value, editorRef.value)
 </script>
 
 <style scoped>
