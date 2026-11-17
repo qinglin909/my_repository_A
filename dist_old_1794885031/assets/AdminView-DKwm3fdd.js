@@ -1,0 +1,1 @@
+import{D as e,s as t,t as n,u as r}from"./_plugin-vue_export-helper-Bi8roZM0.js";var i={},a={class:`page-container`};function o(n,i){return e(),r(`div`,a,[...i[0]||=[t(`h1`,{class:`section-title`},`后台管理`,-1),t(`div`,{class:`app-card`,style:{padding:`40px`,"text-align":`center`,color:`#666`}},` 后台管理功能正在开发中... `,-1)]])}var s=n(i,[[`render`,o]]);export{s as default};

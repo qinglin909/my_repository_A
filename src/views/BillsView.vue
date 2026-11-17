@@ -7,18 +7,23 @@
         <p>登记每月固定支出与收入（宽带、话费、订阅……），自动汇总、出图、可导出。</p>
       </div>
       <div class="head-actions">
+        <span v-if="cloudOn" class="cloud-tag">☁️ 云同步</span>
         <button type="button" class="ghost-btn" :disabled="!records.length" @click="exportCsv">导出 CSV</button>
         <button type="button" class="ghost-btn" :disabled="!expenseTotal && !incomeTotal" @click="exportChartPng">下载图表 PNG</button>
       </div>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="login-prompt app-card">
+    <div v-if="!userStore.isLoggedIn && !cloudOn && !cloudLoading" class="login-prompt app-card">
       <span class="prompt-icon">💰</span>
       <div>
         <h2>登录后使用</h2>
-        <p>收支数据是私人账本，按账号隔离保存。请先登录，再来登记你的宽带、话费和订阅。</p>
+        <p>收支数据是私人账本。请登录本站账号，或在右上角开启「云同步」后再来登记宽带、话费和订阅。</p>
         <router-link class="solid-btn" to="/login">去登录</router-link>
       </div>
+    </div>
+
+    <div v-else-if="cloudLoading" class="app-card" style="padding:40px;text-align:center;color:var(--text-secondary)">
+      正在检查云同步状态…
     </div>
 
     <template v-else>
@@ -68,6 +73,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { apiFetch } from '@/utils/apiClient'
 import { useUserStore } from '@/stores/user'
+import { isCloudReady, listRows, upsertRows, deleteRow } from '@/utils/cloudDb'
 import { PALETTE } from '@/components/Bills/constants'
 import BillsSummary from '@/components/Bills/BillsSummary.vue'
 import BillForm from '@/components/Bills/BillForm.vue'
@@ -84,6 +90,21 @@ const error = ref('')
 const activeTab = ref('expense')
 const formRef = ref(null)
 const chartsRef = ref(null)
+const cloudOn = ref(false)
+const cloudLoading = ref(true)
+
+// 云端行 <-> 本地记录字段映射（云端用 snake_case，前端用 camelCase）
+const rowToRecord = (r) => ({
+  id: r.id, name: r.name, type: r.type, category: r.category,
+  amount: Number(r.amount), dayOfMonth: r.day_of_month,
+  active: r.active !== false, note: r.note || ''
+})
+const recordToRow = (b, id) => ({
+  ...(id ? { id } : {}),
+  name: b.name, type: b.type, category: b.category,
+  amount: Number(b.amount), day_of_month: Number(b.dayOfMonth),
+  active: b.active !== false, note: b.note || null
+})
 
 /* ---------- 汇总 ---------- */
 const activeRecords = computed(() => records.value.filter((r) => r.active !== false))
@@ -153,14 +174,26 @@ const barRows = computed(() => {
 
 /* ---------- 接口 ---------- */
 async function load() {
-  if (!userStore.isLoggedIn) return
+  cloudLoading.value = true
+  cloudOn.value = await isCloudReady()
+  cloudLoading.value = false
+  if (!cloudOn.value && !userStore.isLoggedIn) return
+
   loading.value = true
   error.value = ''
   try {
-    const res = await apiFetch('/api/bills', { token: userStore.token })
-    const payload = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(payload.message || '加载失败，请稍后重试')
-    records.value = Array.isArray(payload.data) ? payload.data : []
+    if (cloudOn.value) {
+      // 云同步：从 Supabase 读取（RLS 按账号隔离）
+      const res = await listRows('bills')
+      if (!res.ok) throw new Error('云端读取失败')
+      records.value = (res.data || []).map(rowToRecord)
+    } else {
+      // 原有自建后端
+      const res = await apiFetch('/api/bills', { token: userStore.token })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(payload.message || '加载失败，请稍后重试')
+      records.value = Array.isArray(payload.data) ? payload.data : []
+    }
   } catch (err) {
     error.value = err.message || '加载失败，请稍后重试'
     records.value = []
@@ -178,19 +211,32 @@ async function submitBill({ id, payload }) {
   saving.value = true
   error.value = ''
   try {
-    const res = await apiFetch(id ? `/api/bills/${id}` : '/api/bills', {
-      method: id ? 'PUT' : 'POST',
-      token: userStore.token,
-      body: payload
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.message || '保存失败，请稍后重试')
-
-    if (id) {
-      const index = records.value.findIndex((r) => String(r.id) === String(id))
-      if (index > -1) records.value.splice(index, 1, { ...records.value[index], ...data.data })
+    if (cloudOn.value) {
+      const row = recordToRow(payload, id || undefined)
+      const res = await upsertRows('bills', row, { onConflict: 'id' })
+      if (!res.ok) throw new Error('云端保存失败')
+      const saved = rowToRecord(res.data[0])
+      if (id) {
+        const index = records.value.findIndex((r) => String(r.id) === String(id))
+        if (index > -1) records.value.splice(index, 1, saved)
+      } else {
+        records.value.push(saved)
+      }
     } else {
-      records.value.push(data.data)
+      const res = await apiFetch(id ? `/api/bills/${id}` : '/api/bills', {
+        method: id ? 'PUT' : 'POST',
+        token: userStore.token,
+        body: payload
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message || '保存失败，请稍后重试')
+
+      if (id) {
+        const index = records.value.findIndex((r) => String(r.id) === String(id))
+        if (index > -1) records.value.splice(index, 1, { ...records.value[index], ...data.data })
+      } else {
+        records.value.push(data.data)
+      }
     }
     formRef.value?.reset()
   } catch (err) {
@@ -209,10 +255,15 @@ function editBill(bill) {
 async function removeBill(bill) {
   if (!window.confirm(`确定删除「${bill.name}」吗？`)) return
   try {
-    const res = await apiFetch(`/api/bills/${bill.id}`, { method: 'DELETE', token: userStore.token })
-    if (!res.ok) {
-      const payload = await res.json().catch(() => ({}))
-      throw new Error(payload.message || '删除失败')
+    if (cloudOn.value) {
+      const res = await deleteRow('bills', bill.id)
+      if (!res.ok) throw new Error('云端删除失败')
+    } else {
+      const res = await apiFetch(`/api/bills/${bill.id}`, { method: 'DELETE', token: userStore.token })
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}))
+        throw new Error(payload.message || '删除失败')
+      }
     }
     records.value = records.value.filter((r) => String(r.id) !== String(bill.id))
   } catch (err) {
@@ -223,12 +274,17 @@ async function removeBill(bill) {
 async function toggleActive(bill) {
   const next = bill.active === false
   try {
-    const res = await apiFetch(`/api/bills/${bill.id}`, {
-      method: 'PUT',
-      token: userStore.token,
-      body: { active: next }
-    })
-    if (!res.ok) throw new Error('操作失败')
+    if (cloudOn.value) {
+      const res = await upsertRows('bills', recordToRow({ ...bill, active: next }, bill.id), { onConflict: 'id' })
+      if (!res.ok) throw new Error('云端更新失败')
+    } else {
+      const res = await apiFetch(`/api/bills/${bill.id}`, {
+        method: 'PUT',
+        token: userStore.token,
+        body: { active: next }
+      })
+      if (!res.ok) throw new Error('操作失败')
+    }
     bill.active = next
   } catch (err) {
     error.value = err.message || '操作失败'
@@ -319,5 +375,12 @@ function dateStamp() {
   return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  window.addEventListener('cloud-auth-changed', load)
+})
 </script>
+
+<style scoped>
+.cloud-tag { font-size: 12px; font-weight: 700; color: #0f8a5f; background: #ecfdf5; padding: 6px 12px; border-radius: 999px; }
+</style>

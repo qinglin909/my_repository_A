@@ -3,6 +3,7 @@ import { reactive } from 'vue'
 import { DEFAULT_DATABASES } from '@/utils/calcConfig.js'
 import { normalizeRule } from '@/utils/scoreConvert.js'
 import { STORAGE_KEY } from './constants.js'
+import { isCloudReady, readConfig, writeConfig } from '@/utils/cloudDb'
 
 const defaults = DEFAULT_DATABASES[0].config
 
@@ -47,11 +48,42 @@ export function readSavedRules() {
   }
 }
 
+// 云同步状态（由工作台 index.vue 初始化）
+let cloudReady = false
+let cloudWriteTimer = null
+
+/** 云同步开启时，从云端读取整包规则配置；未开启/失败返回 null，调用方回退本地 */
+export async function loadRulesFromCloud() {
+  try {
+    cloudReady = await isCloudReady()
+    if (!cloudReady) return null
+    const res = await readConfig('score_rules')
+    return res.ok ? res.data : null
+  } catch {
+    return null
+  }
+}
+
+/** 把当前整包配置写入云端（防抖，由 watch 触发） */
+function scheduleCloudWrite() {
+  if (!cloudReady) return
+  if (cloudWriteTimer) clearTimeout(cloudWriteTimer)
+  cloudWriteTimer = setTimeout(() => {
+    try {
+      const full = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}
+      writeConfig('score_rules', full)
+    } catch {
+      // 云写入失败不影响本地使用
+    }
+  }, 700)
+}
+
 // 两处 watch 各自写自己那部分，写前先读回合并，避免互相覆盖
 export function mergeSavedRules(partial) {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...saved, ...partial }))
+    scheduleCloudWrite()
   } catch {
     // 本地存储不可用时保持当前会话可用
   }

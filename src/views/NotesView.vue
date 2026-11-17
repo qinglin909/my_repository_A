@@ -5,6 +5,7 @@
       <div class="sidebar-header">
         <div class="header-top">
           <h2>我的文档</h2>
+          <span class="cloud-tag" :class="{ on: cloudOn }">{{ cloudOn ? '☁️ 已云同步' : '💾 仅本机' }}</span>
         </div>
         
         <div class="action-buttons">
@@ -119,12 +120,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 // Mermaid is loaded on demand to keep the initial Notes chunk smaller.
 import mammoth from 'mammoth'
 import { STORAGE_KEYS, readJSON, writeJSON, getToken } from '@/utils/storage'
 import { apiFetch } from '@/utils/apiClient'
 import { formatShortDate as formatDate } from '@/utils/date'
+import { isCloudReady, listRows, upsertRows, deleteRow } from '@/utils/cloudDb'
 
 // 🚨 请务必替换为你自己刚申请的智谱 API Key
 // The AI API key must only exist on the backend.
@@ -143,11 +145,38 @@ const aiLoading = ref(false)
 const currentChart = ref('flow')
 const aiResult = ref({ summary: '', flowCode: '', sequenceCode: '' })
 const currentNote = computed(() => notes.value.find(n => n.id === currentNoteId.value) || null)
+const cloudOn = ref(false)
+let saveTimer = null
+
+// 云端行 -> 本地笔记对象
+const rowToNote = (r) => ({ id: r.id, title: r.title, content: r.content, updatedAt: r.updated_at_ms || 0 })
+
+async function loadNotes() {
+  const ready = await isCloudReady()
+  cloudOn.value = ready
+  if (ready) {
+    const res = await listRows('notes')
+    if (res.ok && Array.isArray(res.data)) {
+      notes.value = res.data.map(rowToNote).sort((a, b) => b.updatedAt - a.updatedAt)
+    } else {
+      // 云端读取失败则回退本地
+      const saved = readJSON(STORAGE_KEYS.NOTES)
+      if (saved) notes.value = saved
+    }
+  } else {
+    const saved = readJSON(STORAGE_KEYS.NOTES)
+    if (saved) notes.value = saved
+  }
+  if (notes.value.length > 0) currentNoteId.value = notes.value[0].id
+}
 
 onMounted(() => {
-  const saved = readJSON(STORAGE_KEYS.NOTES)
-  if (saved) notes.value = saved
-  if (notes.value.length > 0) currentNoteId.value = notes.value[0].id
+  loadNotes()
+  window.addEventListener('cloud-auth-changed', loadNotes)
+})
+onUnmounted(() => {
+  window.removeEventListener('cloud-auth-changed', loadNotes)
+  if (saveTimer) clearTimeout(saveTimer)
 })
 
 const createNote = () => {
@@ -166,6 +195,7 @@ const deleteNote = (id) => {
       currentNoteId.value = null
     }
     saveNotes()
+    if (cloudOn.value) deleteRow('notes', String(id))
   }
 }
 
@@ -183,7 +213,20 @@ const handleContentInput = () => {
 }
 const saveNotes = () => {
   if (currentNote.value) currentNote.value.updatedAt = Date.now()
+  // 永远写本地：即使云同步失败也有兜底，且离线可用
   writeJSON(STORAGE_KEYS.NOTES, notes.value)
+  if (!cloudOn.value) return
+  // 防抖：编辑器连续输入时合并成一次云端写入
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(async () => {
+    const rows = notes.value.map(n => ({
+      id: String(n.id),
+      title: n.title || '',
+      content: n.content || '',
+      updated_at_ms: n.updatedAt || 0
+    }))
+    await upsertRows('notes', rows, { onConflict: 'id' })
+  }, 600)
 }
 
 const triggerImport = () => fileInputRef.value.click()
@@ -378,7 +421,10 @@ const exportAsMarkdown = () => {
 .notes-container { display: flex; gap: 24px; height: calc(100vh - 120px); }
 .sidebar { width: 280px; display: flex; flex-direction: column; padding: 24px 20px; flex-shrink: 0; }
 .sidebar-header { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; }
 .header-top h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-main); }
+.cloud-tag { font-size: 11px; font-weight: 700; color: #94a3b8; background: #f1f5f9; padding: 3px 8px; border-radius: 999px; }
+.cloud-tag.on { color: #0f8a5f; background: #ecfdf5; }
 .action-buttons { display: flex; flex-direction: column; gap: 10px; }
 .add-btn { width: 100%; background: #1a1a1a; color: #fff; border: none; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 6px; }
 .add-btn:hover { background: #333; }

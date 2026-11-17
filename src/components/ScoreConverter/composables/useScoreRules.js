@@ -8,7 +8,7 @@ import {
   ruleDiffs,
   ruleLooksValid
 } from '@/utils/scoreConvert.js'
-import { state, readSavedRules, mergeSavedRules } from '../store.js'
+import { state, readSavedRules, mergeSavedRules, loadRulesFromCloud } from '../store.js'
 import { lineFields } from '../constants.js'
 
 const defaults = DEFAULT_DATABASES[0].config
@@ -36,8 +36,10 @@ export function useScoreRules() {
     state.rules.history = normalizeRule(defaults.history)
   }
 
-  onMounted(() => {
-    const saved = readSavedRules()
+  onMounted(async () => {
+    // 云同步开启时优先用云端配置；否则回退本地
+    let saved = await loadRulesFromCloud()
+    if (!saved) saved = readSavedRules()
     if (!saved) return
     const savedRules = saved.rules || saved
     if (savedRules?.physics) state.rules.physics = normalizeRule(savedRules.physics)

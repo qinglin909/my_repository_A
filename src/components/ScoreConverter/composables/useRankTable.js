@@ -4,6 +4,24 @@ import { parseRankTableExcel } from '@/utils/calcLogic.js'
 import { SUBJECTS, SUBJECT_LABELS } from '@/utils/scoreConvert.js'
 import { state } from '../store.js'
 import { RANK_STORAGE_KEY } from '../constants.js'
+import { isCloudReady, readConfig, writeConfig } from '@/utils/cloudDb'
+
+// 云端一分一段表配置（与规则配置分开存）
+async function loadRankFromCloud() {
+  try {
+    if (!(await isCloudReady())) return null
+    const res = await readConfig('rank_tables')
+    return res.ok ? res.data : null
+  } catch {
+    return null
+  }
+}
+
+function saveRankToCloud(payload) {
+  if (!cloudReadyForRank) return
+  writeConfig('rank_tables', payload)
+}
+let cloudReadyForRank = false
 
 export function useRankTable({ onRankChange } = {}) {
   const rankSourceLabel = computed(() => (state.customRank ? '已导入并保存在本机' : '未导入'))
@@ -42,7 +60,9 @@ export function useRankTable({ onRankChange } = {}) {
         history: parsed.columns?.history || state.rankColumns.history
       }
       state.customRank = true
-      localStorage.setItem(RANK_STORAGE_KEY, JSON.stringify({ ...state.rankTables, columns: state.rankColumns }))
+      const payload = { ...state.rankTables, columns: state.rankColumns }
+      localStorage.setItem(RANK_STORAGE_KEY, JSON.stringify(payload))
+      saveRankToCloud(payload)
       onRankChange?.()
     } catch (error) {
       state.rankError = error.message || '一分一段表解析失败'
@@ -58,22 +78,28 @@ export function useRankTable({ onRankChange } = {}) {
     state.customRank = false
     state.rankError = ''
     localStorage.removeItem(RANK_STORAGE_KEY)
+    saveRankToCloud({ physics: [], history: [], columns: { physics: null, history: null } })
     onRankChange?.()
   }
 
-  onMounted(() => {
-    try {
-      const savedRank = JSON.parse(localStorage.getItem(RANK_STORAGE_KEY) || 'null')
-      if (savedRank?.physics?.length || savedRank?.history?.length) {
-        state.rankTables = {
-          physics: savedRank.physics || [],
-          history: savedRank.history || []
-        }
-        if (savedRank.columns) state.rankColumns = savedRank.columns
-        state.customRank = true
+  onMounted(async () => {
+    // 云同步开启时优先读云端；否则回退本机
+    let savedRank = await loadRankFromCloud()
+    cloudReadyForRank = !!savedRank || (await isCloudReady())
+    if (!savedRank) {
+      try {
+        savedRank = JSON.parse(localStorage.getItem(RANK_STORAGE_KEY) || 'null')
+      } catch {
+        localStorage.removeItem(RANK_STORAGE_KEY)
       }
-    } catch {
-      localStorage.removeItem(RANK_STORAGE_KEY)
+    }
+    if (savedRank?.physics?.length || savedRank?.history?.length) {
+      state.rankTables = {
+        physics: savedRank.physics || [],
+        history: savedRank.history || []
+      }
+      if (savedRank.columns) state.rankColumns = savedRank.columns
+      state.customRank = true
     }
   })
 

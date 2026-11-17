@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 // 🚨 这里换成你自己的 Supabase 项目 URL 和 Anon Key
-const supabaseUrl = 'https://你的项目ID.supabase.co'
-const supabaseAnonKey = '你的Anon-Key'
+const supabaseUrl = 'https://otrmipumtinzhxmxbvvb.supabase.co'
+const supabaseAnonKey = 'sb_publishable_A749Sduo37WHv0RSSsDCGA_oVR-0sBo'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)

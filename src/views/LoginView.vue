@@ -4,9 +4,40 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { setToken, clearToken } from '@/utils/storage'
 import { apiFetch } from '@/utils/apiClient'
+import { getMyProfile, signInCloud, signUpCloud } from '@/utils/cloudDb'
 
 const userStore = useUserStore()
 const router = useRouter()
+
+// 云同步账号登录
+const cloudEmail = ref('')
+const cloudPassword = ref('')
+const cloudLoading = ref(false)
+const cloudMsg = ref('')
+const cloudLogin = async (action) => {
+  cloudMsg.value = ''
+  if (!cloudEmail.value.trim()) return cloudMsg.value = '请输入邮箱'
+  if (cloudPassword.value.length < 6) return cloudMsg.value = '密码至少 6 位'
+  cloudLoading.value = true
+  try {
+    const { data, error } = action === 'up'
+      ? await signUpCloud(cloudEmail.value.trim(), cloudPassword.value)
+      : await signInCloud(cloudEmail.value.trim(), cloudPassword.value)
+    if (error) throw error
+    if (!data.session) {
+      cloudMsg.value = '注册成功，请先去邮箱确认后再「云登录」。'
+      return
+    }
+    const profile = await getMyProfile()
+    if (profile) userStore.applyCloudProfile(profile)
+    window.dispatchEvent(new CustomEvent('cloud-auth-changed'))
+    router.push('/home')
+  } catch (e) {
+    cloudMsg.value = e?.message || '操作失败'
+  } finally {
+    cloudLoading.value = false
+  }
+}
 
 // ================= 页面状态 =================
 const mode = ref(0) // 0 = 登录，1 = 注册
@@ -279,6 +310,19 @@ const handleSubmit = async () => {
             <span v-if="loading" class="loader"></span>
             <span>{{ loading ? '请稍候...' : (mode === 0 ? '登 录' : '注 册') }}</span>
           </button>
+
+          <!-- 云同步账号：Supabase Auth，换设备数据跟随 -->
+          <div class="cloud-divider"><span>或使用云同步账号</span></div>
+          <div class="cloud-login-box">
+            <p class="cloud-hint">用邮箱注册云账号，笔记/导航/账单/分数规则自动多端同步。</p>
+            <input v-model="cloudEmail" type="email" placeholder="邮箱" autocomplete="email" />
+            <input v-model="cloudPassword" type="password" placeholder="密码（至少6位）" autocomplete="current-password" />
+            <p v-if="cloudMsg" class="cloud-msg">{{ cloudMsg }}</p>
+            <div class="cloud-btns">
+              <button type="button" :disabled="cloudLoading" @click="cloudLogin('in')">云登录</button>
+              <button type="button" :disabled="cloudLoading" @click="cloudLogin('up')">注册云账号</button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
@@ -420,6 +464,19 @@ h2 { margin: 0 0 8px 0; color: #1f2937; font-size: 28px; font-weight: 700; }
 
 .loader { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* 云同步账号登录 */
+.cloud-divider { display: flex; align-items: center; gap: 10px; margin: 22px 0 16px; color: #9ca3af; font-size: 12px; }
+.cloud-divider::before, .cloud-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+.cloud-login-box { display: flex; flex-direction: column; gap: 9px; padding: 14px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #f8fafc; }
+.cloud-hint { margin: 0 0 2px; font-size: 12px; color: #64748b; line-height: 1.5; }
+.cloud-login-box input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; background: #fff; }
+.cloud-login-box input:focus { border-color: #6366f1; }
+.cloud-btns { display: flex; gap: 8px; }
+.cloud-btns button { flex: 1; padding: 9px; border: 1px solid #6366f1; border-radius: 8px; background: #fff; color: #6366f1; font-size: 13px; font-weight: 600; cursor: pointer; }
+.cloud-btns button:first-child { background: #6366f1; color: #fff; }
+.cloud-btns button:disabled { opacity: .6; }
+.cloud-msg { margin: 0; font-size: 12px; color: #ef4444; line-height: 1.5; }
 
 /* =========================================
    滑块验证码样式

@@ -30,7 +30,8 @@
     </form>
 
     <div class="result-meta" aria-live="polite">
-      <span>{{ total ? `本地目录找到 ${total} 件商品` : '本地商品目录' }}</span>
+      <span v-if="cloudOn" class="cloud-tag">☁️ 云同步目录</span>
+      <span>{{ total ? `${cloudOn ? '云端' : '本地'}目录找到 ${total} 件商品` : (cloudOn ? '云端商品目录' : '本地商品目录') }}</span>
       <button v-if="keyword" class="clear-btn" type="button" @click="clearSearch">清除搜索</button>
     </div>
 
@@ -129,6 +130,7 @@ import { useRoute } from 'vue-router'
 import VipPlanCard from '@/components/VipPlanCard.vue'
 import { formatPrice } from '@/utils/format'
 import { apiFetch, isAbortError } from '@/utils/apiClient'
+import { isCloudReady, listRows } from '@/utils/cloudDb'
 
 const products = ref([])
 const keyword = ref('')
@@ -140,7 +142,9 @@ const pageSize = 24
 const errorMessage = ref('')
 const route = useRoute()
 const vipNotice = computed(() => route.query.vip === 'required')
+const cloudOn = ref(false)
 let activeRequest
+let allCloudProducts = [] // 云同步模式下的全量商品，搜索在本地过滤
 
 const showVip = computed(() => keyword.value.trim() === '')
 
@@ -159,9 +163,36 @@ const loadProducts = async (replace = false) => {
 
   loading.value = true
   errorMessage.value = ''
-  activeRequest = new AbortController()
 
   try {
+    cloudOn.value = await isCloudReady()
+    if (cloudOn.value) {
+      // 云同步：整包读取后本地分页/搜索
+      if (!allCloudProducts.length || replace) {
+        const res = await listRows('products')
+        if (!res.ok) throw new Error('云端商品读取失败')
+        allCloudProducts = (res.data || []).map(r => ({
+          id: r.id, title: r.title, price: r.price,
+          cover_image: r.cover_image, tags: r.tags,
+          description: r.description, url: r.url
+        }))
+      }
+      const kw = keyword.value.trim().toLowerCase()
+      const filtered = kw
+        ? allCloudProducts.filter(p => (p.title || '').toLowerCase().includes(kw)
+            || (p.description || '').toLowerCase().includes(kw)
+            || (p.tags || []).join(' ').toLowerCase().includes(kw))
+        : allCloudProducts
+      total.value = filtered.length
+      const start = 0
+      products.value = filtered.slice(start, pageSize * page.value)
+      hasMore.value = products.value.length < filtered.length
+      page.value += 1
+      return
+    }
+
+    // 原有自建后端
+    activeRequest = new AbortController()
     const params = new URLSearchParams({
       page: String(page.value),
       pageSize: String(pageSize),
@@ -210,7 +241,13 @@ const hideBrokenImage = (event) => {
   event.target.hidden = true
 }
 
-onMounted(() => loadProducts(true))
+onMounted(() => {
+  loadProducts(true)
+  window.addEventListener('cloud-auth-changed', () => {
+    allCloudProducts = []
+    loadProducts(true)
+  })
+})
 </script>
 
 <style scoped>
@@ -224,7 +261,8 @@ onMounted(() => loadProducts(true))
 .search-btn, .taobao-btn, .load-more-btn { display: inline-flex; justify-content: center; align-items: center; min-height: 42px; padding: 0 18px; border: 0; border-radius: 10px; background: #2563eb; color: white; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; white-space: nowrap; }
 .search-btn:disabled, .load-more-btn:disabled { opacity: .6; cursor: wait; }
 .taobao-btn { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
-.result-meta { display: flex; justify-content: space-between; max-width: 1200px; margin: 20px auto 14px; color: #667085; font-size: 14px; }
+.result-meta { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 20px auto 14px; color: #667085; font-size: 14px; }
+.cloud-tag { font-size: 12px; font-weight: 700; color: #0f8a5f; background: #ecfdf5; padding: 4px 10px; border-radius: 999px; margin-right: 10px; }
 .clear-btn { border: 0; background: transparent; color: #2563eb; cursor: pointer; }
 .vip-notice { max-width: 1200px; margin: 0 auto 18px; padding: 14px 18px; border: 1px solid #fde3c8; border-radius: 14px; background: #fff8ef; color: #b45309; font-size: 14px; line-height: 1.6; }
 .notice, .empty-state { max-width: 1200px; margin: 0 auto; padding: 48px 20px; border: 1px solid #e5e7eb; border-radius: 18px; background: white; text-align: center; color: #667085; }

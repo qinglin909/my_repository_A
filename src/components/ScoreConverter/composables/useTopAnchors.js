@@ -1,7 +1,7 @@
 // 高分段校准与 985/211 参考线，及其自身的持久化
 import { computed, onMounted, watch } from 'vue'
 import { SEGMENT_LABELS, SUBJECTS } from '@/utils/scoreConvert.js'
-import { state, readSavedRules, mergeSavedRules } from '../store.js'
+import { state, readSavedRules, mergeSavedRules, loadRulesFromCloud } from '../store.js'
 
 export function useTopAnchors() {
   const topAnchorOptions = (subjectKey) => ({
@@ -34,8 +34,9 @@ export function useTopAnchors() {
 
   const tierOf = (result, subjectKey) => classifyTier(result.rounded, subjectKey) || SEGMENT_LABELS[result.segment]
 
-  onMounted(() => {
-    const saved = readSavedRules()
+  onMounted(async () => {
+    let saved = await loadRulesFromCloud()
+    if (!saved) saved = readSavedRules()
     if (!saved) return
     if (saved.topAnchors) {
       for (const key of SUBJECTS) {

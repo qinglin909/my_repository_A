@@ -76,6 +76,7 @@
 
         <!-- 右侧：用户操作区 -->
         <div class="user-action">
+          <CloudSyncBadge />
           <div class="user-dropdown" v-if="!userStore.isLoggedIn">
             <button type="button" class="login-btn" @click="goToLogin">登录 / 注册</button>
           </div>
@@ -125,6 +126,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import CalendarView from '@/views/CalendarView.vue'
+import CloudSyncBadge from '@/components/CloudSyncBadge.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -225,6 +227,7 @@ const logout = () => { closeMenus(); userStore.logout(); router.push('/login') }
 .item-text .desc { font-size: 12px; color: var(--text-muted); }
 
 /* 右侧用户区 */
+.user-action { display: flex; align-items: center; gap: 10px; }
 .user-dropdown { position: relative; }
 .user-trigger {
   display: flex; align-items: center; gap: 8px; cursor: pointer;

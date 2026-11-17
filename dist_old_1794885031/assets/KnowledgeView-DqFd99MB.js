@@ -1,0 +1,1 @@
+import{D as e,s as t,t as n,u as r}from"./_plugin-vue_export-helper-Bi8roZM0.js";var i={class:`knowledge-placeholder`},a=n({__name:`KnowledgeView`,setup(n){return(n,a)=>(e(),r(`section`,i,[...a[0]||=[t(`h2`,null,`知识库`,-1),t(`p`,null,`该页面正在建设中，后端接口为 /api/knowledge/*。`,-1)]]))}},[[`__scopeId`,`data-v-81f295ca`]]);export{a as default};
