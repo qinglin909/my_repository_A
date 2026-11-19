@@ -111,6 +111,7 @@ const cloudOn = ref(false)
 // 账号密码（仅这 4 个站点，按用户要求恢复旧版明文展示；不上传云端）
 // =========================================
 const SECRETS = {
+  '优途教育-后台管理(新)': { account: 'yuanhuiadmin', password: 'yuanhui@2021#' },
   '优途教育-后台管理': { account: 'yuanhuiadmin', password: 'yuanhui@2021#' },
   '发送短信': { account: 'gzjsy', password: 'gzjsy@0711' },
   '新订单管理系统': { account: 'zhaowenbin', password: 'yuanhui2024' },
@@ -146,7 +147,8 @@ const SECTIONS = [
       {
         title: '优途核心系统',
         sites: [
-          { name: '优途教育-后台管理', icon: '🏫', description: 'wcii20 优途教育系统', url: 'https://wcii20.ytowin.com/02ko5qp6/login/Adminpc78' },
+          { name: '优途教育-后台管理(新)', icon: '🏫', description: 'newwcii20 优途教育系统(新后台)', url: 'http://newwcii20.ytowin.com/02ko5qp6/Admin/Default' },
+          { name: '优途教育-后台管理', icon: '🏫', description: 'wcii20 优途教育系统(旧后台)', url: 'https://wcii20.ytowin.com/02ko5qp6/login/Admincpc78' },
           { name: '发送短信', icon: '✉️', description: '内部短信发送平台', url: 'http://8.134.208.23:8888/loginBlue.html' },
           { name: '新订单管理系统', icon: '🛒', description: 'qecode 订单系统', url: 'http://qecode.uwii.com.cn/' },
           { name: '优途后台管理平台', icon: '💻', description: 'admin.iutowin 统一后台', url: 'https://admin.iutowin.com/login' }

@@ -18,7 +18,6 @@ export function useExport() {
         换算精确值: item.convertedExact,
         线差: item.diffText,
         进度: item.progressText,
-        所在区间: item.segmentLabel,
         层次: item.tierLabel,
         全省排位参考: item.rank,
         计算过程: item.explain

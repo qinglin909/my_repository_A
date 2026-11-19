@@ -22,22 +22,25 @@ export function useStudents({ topAnchorOptions, tierOf }) {
       if (!detected) unresolved += 1
       const resolved = detected || state.fallbackSubject
       const rule = state.rules[resolved]
-      const result = convertScore(student.originalScore, rule, topAnchorOptions(resolved))
+      const scoreText = String(student.originalScore ?? '').trim()
+      const numericScore = Number(scoreText)
+      const emptyScore = scoreText === '' || (Number.isFinite(numericScore) && numericScore === 0)
+      const result = emptyScore ? null : convertScore(student.originalScore, rule, topAnchorOptions(resolved))
       const table = state.rankTables[resolved]
       return {
         ...student,
         resolvedSubject: resolved,
-        convertedScore: result ? result.rounded : '—',
-        convertedExact: result ? fmt(result.converted) : '—',
-        diffText: result ? fmt(result.diff) : '—',
-        progressText: result && result.progress !== null && result.progress !== undefined
+        convertedScore: emptyScore ? '-' : result ? result.rounded : '—',
+        convertedExact: emptyScore ? '-' : result ? fmt(result.converted) : '—',
+        diffText: emptyScore ? '-' : result ? fmt(result.diff) : '—',
+        progressText: emptyScore ? '-' : result && result.progress !== null && result.progress !== undefined
           ? Number(result.progress).toFixed(4)
           : '—',
-        segmentLabel: result ? SEGMENT_LABELS[result.segment] : '分数异常',
-        tierLabel: result ? tierOf(result, resolved) : '分数异常',
-        rank: result ? lookupRank(result.rounded, table) : '—',
-        rankCovered: result && table.length ? result.rounded >= Number(table[table.length - 1].score) : false,
-        explain: result ? describeConversion(result, rule, topAnchorOptions(resolved)) : '分数异常，无法换算'
+        segmentLabel: emptyScore ? '-' : result ? SEGMENT_LABELS[result.segment] : '分数异常',
+        tierLabel: emptyScore ? '-' : result ? tierOf(result, resolved) : '分数异常',
+        rank: emptyScore ? '-' : result ? lookupRank(result.rounded, table) : '—',
+        rankCovered: emptyScore ? null : result && table.length ? result.rounded >= Number(table[table.length - 1].score) : false,
+        explain: emptyScore ? '-' : result ? describeConversion(result, rule, topAnchorOptions(resolved)) : '分数异常，无法换算'
       }
     })
     state.unresolvedCount = unresolved

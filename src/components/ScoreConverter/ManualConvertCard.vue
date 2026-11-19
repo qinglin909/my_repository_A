@@ -14,7 +14,6 @@
       <StatItem label="换算分（取整）" :value="ctx.manualResult.rounded" primary />
       <StatItem label="换算精确值" :value="ctx.fmt(ctx.manualResult.converted)" />
       <StatItem label="线差" :value="ctx.fmt(ctx.manualResult.diff)" />
-      <StatItem label="所在区间" :value="ctx.SEGMENT_LABELS[ctx.manualResult.segment]" small />
       <StatItem label="区间进度" :value="ctx.manualProgress" />
       <StatItem label="层次" :value="ctx.manualTier" small />
       <StatItem label="全省排位参考" :value="ctx.manualRank" />

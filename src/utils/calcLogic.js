@@ -156,11 +156,14 @@ export const parseRankTableExcel = async (files) => {
       if (!subject) continue
 
       const normalize = (value) => String(value ?? '').replace(/[\s　()（）:：]/g, '')
+      // 排名列优先级：最低排位/位次 > 排名/名次 > 累计 > 人数
+      // 按优先级逐列扫描，确保取优先级最高的匹配，而不是按列位置先匹配到的
       const rankPatterns = [
-        [/最低排位|排位|位次/, true],
-        [/累计/, true],
-        [/排名|名次/, true],
-        [/人数/, false]
+        [/最低排位|最低位次/, true, 1],
+        [/排位|位次/, true, 2],
+        [/排名|名次/, true, 3],
+        [/累计/, true, 4],
+        [/人数/, false, 5]
       ]
       // 分数列表头：不能把「分数段人数」当成分数列
       const isScoreHeader = (value) =>
@@ -174,32 +177,34 @@ export const parseRankTableExcel = async (files) => {
       let rankLabel = ''
 
       // 表头可能是多行合并：分数列与排位列分别在不同行出现，这里逐行累积
+      // 扫描所有行，取优先级最高的排名列
+      let bestRankPriority = Infinity
+      let lastHeaderRow = -1
       for (let i = 0; i < Math.min(raw.length, 30); i++) {
         const candidate = raw[i].map(normalize)
         const scoreIndex = candidate.findIndex(isScoreHeader)
-        if (scoreIndex >= 0) {
+        if (scoreIndex >= 0 && scoreIdx === -1) {
           scoreIdx = scoreIndex
           scoreLabel = candidate[scoreIndex]
+          lastHeaderRow = i
         }
-        let rankIndex = -1
-        let cumulative = true
-        for (const [pattern, flag] of rankPatterns) {
-          const index = candidate.findIndex((value) => pattern.test(value))
-          if (index >= 0) {
-            rankIndex = index
-            cumulative = flag
-            rankLabel = candidate[index]
-            break
+        // 按优先级扫描所有列，取优先级最高的匹配
+        for (let col = 0; col < candidate.length; col++) {
+          const val = candidate[col]
+          for (const [pattern, flag, priority] of rankPatterns) {
+            if (pattern.test(val) && priority < bestRankPriority) {
+              rankIdx = col
+              bestRankPriority = priority
+              isCumulative = flag
+              rankLabel = val
+              lastHeaderRow = i
+              break
+            }
           }
         }
-        if (rankIndex >= 0) {
-          rankIdx = rankIndex
-          isCumulative = cumulative
-        }
-        if (scoreIdx >= 0 && rankIdx >= 0) {
-          headerIndex = i
-          break
-        }
+      }
+      if (scoreIdx >= 0 && rankIdx >= 0) {
+        headerIndex = lastHeaderRow
       }
       if (headerIndex === -1) continue
 

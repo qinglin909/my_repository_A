@@ -46,7 +46,6 @@
               <th>换算精确值</th>
               <th>线差</th>
               <th>进度</th>
-              <th>所在区间</th>
               <th>层次</th>
               <th>全省排位参考</th>
               <th v-if="ctx.state.showExplain">计算过程</th>
@@ -63,7 +62,6 @@
               <td class="exact">{{ item.convertedExact }}</td>
               <td>{{ item.diffText }}</td>
               <td>{{ item.progressText }}</td>
-              <td>{{ item.segmentLabel }}</td>
               <td :class="['tier', item.tierLabel === '985线' ? 'tier-985' : item.tierLabel === '211线' ? 'tier-211' : '']">{{ item.tierLabel }}</td>
               <td>{{ item.rank }}</td>
               <td v-if="ctx.state.showExplain" class="explain-cell">{{ item.explain }}</td>
